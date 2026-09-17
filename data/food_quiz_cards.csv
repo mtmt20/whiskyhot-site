@@ -1,0 +1,41 @@
+﻿card_id,display_name,image_url,sweetness,smoky,fruity,spicy,body,abv_pref,cask_lean,rye_pref,menthol,source_url,license
+spicy_anju,떡볶이,/images/food/spicy-anju-v2.jpg,2,3,1,5,3,46,0,0,1,https://commons.wikimedia.org/wiki/File:Korean.snacks-Tteokbokki-08.jpg,CC BY-SA
+smoky_grilled,훈제·구운 고기,/images/food/smoky-grilled.jpg,2,5,1,2,4,46,0,0,1,https://www.pexels.com/photo/grilled-meat-1233101/,Pexels License
+cheese_nuts,치즈·견과류,/images/food/cheese-nuts.jpg,3,1,2,1,4,43,0,0,1,https://www.pexels.com/photo/close-up-shot-of-food-platter-8775043/,Pexels License
+chocolate_dessert,초콜릿·디저트,/images/food/chocolate-dessert.jpg,5,1,3,1,3,40,0,0,1,https://www.pexels.com/photo/yummy-chocolate-cake-served-with-blackberry-4329844/,Pexels License
+green_grape,청포도,/images/food/green-grape.jpg,3,1,4,1,2,42,0,0,1,https://www.pexels.com/photo/green-grapes-225229/,Pexels License
+red_grape,적포도,/images/food/red-grape.jpg,3,1,5,1,3,44,-1,0,1,https://www.pexels.com/photo/grapes-45209/,Pexels License
+cherry,체리,/images/food/cherry.jpg,4,1,5,1,2,43,-1,0,1,https://www.pexels.com/photo/close-up-photography-of-a-red-cherry-fruit-162689/,Pexels License
+strawberry,딸기,/images/food/strawberry-v2.jpg,4,1,4,1,2,42,1,0,1,https://www.pexels.com/photo/photo-of-strawberries-4038780/,Pexels License
+peach,복숭아,/images/food/peach.jpg,3,1,5,1,2,43,1,0,1,https://www.pexels.com/photo/fresh-juicy-pink-peach-on-pink-surface-6157041/,Pexels License
+soju,소주,/images/food/soju-v3.jpg,2,1,1,3,2,48,0,0,1,https://www.pexels.com/photo/korean-soju-bottle-and-shot-glass-on-wooden-table-31203777/,Pexels License
+soju_original,소주 오리지널,/images/food/soju-original-v3.jpg,1,1,1,4,2,52,0,0,1,https://www.pexels.com/photo/bottle-of-soju-on-table-in-room-4305074/,Pexels License
+beer,맥주,/images/food/beer.jpg,2,1,2,1,2,40,0,0,1,https://www.pexels.com/photo/close-up-shot-of-a-glass-of-beer-6223373/,Pexels License
+hongeo,홍어삼합,/images/food/hongeo.jpg,1,2,1,3,4,48,-1,0,1,https://commons.wikimedia.org/wiki/File:Korean_cuisine-Samhap-01.jpg,CC BY 2.0 (Wikimedia Commons)
+greens,쌈채소·나물,/images/food/greens.jpg,1,1,2,3,1,42,0,1,2,https://www.pexels.com/photo/mixed-vegetable-salad-1332275/,Pexels License
+espresso,강배전 에스프레소,/images/food/espresso.jpg,1,3,1,1,4,44,0,0,1,https://www.pexels.com/photo/close-up-of-a-shot-of-espresso-9050518/,Pexels License
+tiramisu,티라미수,/images/food/tiramisu.jpg,4,1,1,1,3,42,-1,0,1,https://www.pexels.com/photo/close-up-shot-of-tiramisu-cake-14766327/,Pexels License
+pretzel,프레첼,/images/food/pretzel.jpg,1,1,1,1,2,42,1,0,1,https://www.pexels.com/photo/close-up-of-a-pretzel-18529797/,Pexels License
+baguette,바게트,/images/food/baguette.jpg,1,1,1,1,2,42,1,0,1,https://www.pexels.com/photo/close-up-photo-of-bread-6660187/,Pexels License
+carbonara,까르보나라,/images/food/carbonara.jpg,1,2,1,3,4,44,0,0,1,https://www.pexels.com/photo/spaghetti-carbonara-on-plate-12116165/,Pexels License
+pork_trotters,한방 족발,/images/food/pork-trotters.jpg,3,1,2,1,5,45,-1,0,1,사용자 제공 (Gemini 생성),AI 생성 이미지
+kkomjangeo,볏짚 꼼장어,/images/food/kkomjangeo.jpg,2,4,1,2,3,45,0,0,1,사용자 제공 (Gemini 생성),AI 생성 이미지
+dates,중동 대추야자,/images/food/dates.jpg,5,1,3,1,2,44,-1,0,1,https://www.pexels.com/photo/closeup-of-dry-dates-17923889/,Pexels License
+almonds,고소한 아몬드,/images/food/almonds.jpg,1,1,1,1,3,43,1,0,1,https://www.pexels.com/photo/assorted-nuts-in-a-bowl-529632/,Pexels License
+mango,생 망고,/images/food/mango.jpg,4,1,5,1,2,42,1,0,1,https://www.pexels.com/photo/sliced-fresh-mango-in-a-glass-of-creamy-yoghurt-5150156/,Pexels License
+vanilla,바닐라빈,/images/food/vanilla-v2.jpg,4,1,1,1,3,43,1,0,1,https://www.pexels.com/photo/close-up-of-vanilla-beans-14381802/,Pexels License
+honey,꿀,/images/food/honey.jpg,5,1,2,1,2,42,0,0,1,https://www.pexels.com/photo/close-up-photo-of-a-honey-dipper-5634210/,Pexels License
+apple,청사과,/images/food/apple.jpg,3,1,4,1,2,42,1,0,1,https://www.pexels.com/photo/green-apple-with-black-background-9893810/,Pexels License
+orange_peel,말린 오렌지필,/images/food/orange-peel.jpg,4,1,4,1,3,45,-1,0,1,https://pixabay.com/photos/orange-slice-dried-fruits-oranges-1164504/,Pixabay Content License
+caramel,캐러멜,/images/food/caramel.jpg,5,1,1,1,3,43,1,0,1,https://www.pexels.com/photo/caramel-in-a-jar-7213879/,Pexels License
+raisin,건포도,/images/food/raisin.jpg,4,1,3,1,4,45,-1,0,1,https://www.pexels.com/photo/close-up-shot-of-raisins-6085951/,Pexels License
+toffee,토피,/images/food/toffee.jpg,5,1,1,1,4,44,1,0,1,https://www.pexels.com/photo/a-close-up-shot-of-a-toffee-candy-14631349/,Pexels License
+cinnamon,시나몬 스틱,/images/food/cinnamon.jpg,2,1,1,4,3,45,0,1,1,https://www.pexels.com/photo/brown-cinnamon-sticks-in-close-up-photography-10369972/,Pexels License
+fig,무화과,/images/food/fig-v2.jpg,4,1,4,1,4,45,-1,0,1,https://www.pexels.com/photo/fig-cut-in-half-13427448/,Pexels License
+ginger,생강,/images/food/ginger-v2.jpg,2,1,1,4,2,44,0,1,2,https://www.pexels.com/photo/fresh-ginger-roots-and-powder-161556/,Pexels License
+pear,배,/images/food/pear.jpg,3,1,4,1,2,42,1,0,2,https://www.pexels.com/photo/pear-fruits-on-brown-wooden-table-11170935/,Pexels License
+lemon,레몬 제스트,/images/food/lemon.jpg,1,1,3,1,1,43,1,0,2,https://www.pexels.com/photo/close-up-photography-of-sliced-lemon-1002543/,Pexels License
+plum,자두,/images/food/plum.jpg,3,1,4,1,3,44,-1,0,1,https://www.pexels.com/photo/close-up-photo-of-ripe-plums-7974816/,Pexels License
+mint,민트 잎,/images/food/mint-leaves.jpg,1,1,1,2,1,42,0,0,5,https://www.pexels.com/photo/close-up-of-mint-leaves-5498007/,Pexels License
+mint_candy,박하사탕,/images/food/mint-candy.jpg,4,1,1,1,1,40,1,0,5,https://www.pexels.com/photo/set-of-delicious-candies-on-pink-plate-4016539/,Pexels License
+red_ginseng,홍삼,/images/food/red-ginseng.jpg,1,1,1,3,4,45,-1,0,1,https://commons.wikimedia.org/wiki/File:Korean_red_ginseng.jpg,CC BY 2.0 (Wikimedia Commons, IsaacMao)

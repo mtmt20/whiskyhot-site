@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>발베니 테이스팅 노트 · 가격 · 순위 | WHISKY TRENDS RADAR</title>
+<meta name="description" content="발베니(Single Malt · Balvenie) 커뮤니티 언급량, 오픈런 특가, 노징·팔레트·피니시 테이스팅 노트" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="발베니" />
+<meta property="og:description" content="Single Malt · Balvenie · 커뮤니티 언급 7회" />
+<meta property="og:image" content="https://whiskyhot.com/og-image-v2.jpg" />
+<link rel="icon" href="/favicon.png" />
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: linear-gradient(180deg, #120D0A 0%, #0B0908 55%, #0A0908 100%);
+    color: #F2EFE9;
+    font-family: -apple-system, 'Pretendard', 'Malgun Gothic', sans-serif;
+    padding: 32px 18px 60px;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  h1 {
+    font-size: 1.7rem; font-weight: 800;
+    background: linear-gradient(90deg, #FDE68A 0%, #F59E0B 45%, #D97706 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin: 0 0 6px 0;
+  }
+  .subtitle { color: #B8A88F; font-size: 0.9rem; margin-bottom: 28px; }
+  .section-label {
+    display: block; border-left: 3px solid #D97706; padding-left: 10px;
+    margin: 28px 0 12px 0; font-size: 0.95rem; font-weight: 700;
+  }
+  ol.rank-list, ul.hot-list { list-style: none; margin: 0; padding: 0; }
+  .rank-row, .hot-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; margin-bottom: 8px; border-radius: 10px;
+    background: linear-gradient(135deg, rgba(245,158,11,0.07), rgba(255,255,255,0.02));
+    border: 1px solid rgba(245,158,11,0.15);
+    text-decoration: none; color: inherit;
+  }
+  a.rank-row:hover, a.hot-row:hover { border-color: rgba(245,158,11,0.5); }
+  /* 병 사진이 대부분 흰 배경이라 카드에 그냥 박으면 튀어 보임 -> 앰버 라이팅이 도는
+     원형 스포트라이트 안에 병을 담아서 바 조명 아래 놓인 느낌으로 어우러지게 함 */
+  .rank-thumb-wrap {
+    width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 38%, rgba(245,158,11,0.35), rgba(20,16,13,0.95) 72%);
+    box-shadow: 0 0 16px rgba(245,158,11,0.22), inset 0 0 8px rgba(0,0,0,0.4);
+  }
+  .rank-thumb {
+    max-width: 78%; max-height: 78%; object-fit: contain;
+    filter: drop-shadow(0 2px 5px rgba(0,0,0,0.55));
+  }
+  .rank-num { font-weight: 800; color: #F5B841; width: 18px; flex-shrink: 0; font-size: 0.85rem; }
+  .rank-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .rank-name { font-weight: 700; font-size: 0.95rem; line-height: 1.3; }
+  .rank-meta { color: #8A7C68; font-size: 0.72rem; }
+  .rank-count { color: #F5B841; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; white-space: nowrap; }
+  .hot-name { font-weight: 700; flex: 1; min-width: 0; }
+  .hot-score { color: #F5B841; font-weight: 700; font-size: 0.85rem; }
+  .hot-trend { color: #B8A88F; font-size: 0.82rem; width: 48px; text-align: right; flex-shrink: 0; }
+  .cta {
+    display: block; text-align: center; margin-top: 32px; padding: 16px;
+    border-radius: 12px; background: linear-gradient(90deg, #F59E0B, #D97706);
+    color: #14100D; font-weight: 800; text-decoration: none; font-size: 1rem;
+  }
+  footer { margin-top: 40px; color: #6B5F4E; font-size: 0.75rem; text-align: center; }
+  footer a { color: #8A7C68; }
+  .detail-hero { display: flex; gap: 16px; align-items: center; margin-bottom: 20px; }
+  .detail-img-wrap {
+    width: 100px; height: 100px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 38%, rgba(245,158,11,0.4), rgba(20,16,13,0.95) 72%);
+    box-shadow: 0 0 24px rgba(245,158,11,0.25), inset 0 0 12px rgba(0,0,0,0.4);
+  }
+  .detail-img { max-width: 76%; max-height: 76%; object-fit: contain; filter: drop-shadow(0 3px 8px rgba(0,0,0,0.55)); }
+  .detail-meta { color: #B8A88F; font-size: 0.85rem; }
+  .tagline-box {
+    margin-top: 6px; padding: 14px 16px; border-radius: 10px;
+    background: linear-gradient(90deg, rgba(245,158,11,0.14), rgba(245,158,11,0.03));
+    border-left: 3px solid #F5B841;
+  }
+  .tagline-label { color: #D97706; font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .tagline-text { color: #F2EFE9; font-size: 0.95rem; font-weight: 700; line-height: 1.4; }
+  .price-box { display: flex; align-items: baseline; gap: 8px; margin: 6px 0 24px 0; }
+  .price-old { color: #7A6E5D; font-size: 0.85rem; text-decoration: line-through; }
+  .price-new { color: #F5B841; font-size: 1.3rem; font-weight: 800; }
+  .param-card {
+    margin-bottom: 24px; padding: 16px 18px; border-radius: 12px;
+    background: linear-gradient(135deg, rgba(245,158,11,0.06), rgba(255,255,255,0.015));
+    border: 1px solid rgba(245,158,11,0.15);
+  }
+  .param-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .param-row:last-of-type { margin-bottom: 0; }
+  .param-label { width: 68px; flex-shrink: 0; font-size: 0.82rem; color: #D9CBB4; }
+  .param-bar { flex: 1; height: 6px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+  .param-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #D97706, #F5B841); }
+  .param-score { width: 30px; flex-shrink: 0; text-align: right; font-size: 0.78rem; color: #8A7C68; }
+  .param-caption { margin: 12px 0 0 0; font-size: 0.7rem; color: #6B5F4E; }
+  .note-block { margin-bottom: 14px; padding: 14px 16px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(245,158,11,0.12); }
+  .note-label { color: #D97706; font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .note-text { line-height: 1.6; font-size: 0.92rem; }
+  .source-note { color: #6B5F4E; font-size: 0.72rem; margin-top: 24px; }
+  .source-note a { color: #8A7C68; }
+  .back-link { display: inline-block; margin-bottom: 20px; color: #B8A88F; text-decoration: none; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back-link" href="/">← TOP10으로 돌아가기</a>
+    <div class="detail-hero">
+      <div class="detail-img-wrap"><img class="detail-img" src="/images/whisky-thumbs/balvenie-doublewood-12-year-old.png" loading="lazy" /></div>
+      <div>
+        <h1 style="font-size:1.3rem;">발베니</h1>
+        <div class="detail-meta">Single Malt · Balvenie · 언급 7회</div>
+      </div>
+    </div>
+    
+
+
+    <span class="section-label">테이스팅 노트</span>
+    <p class="detail-meta">아직 등록된 테이스팅 노트가 없습니다.</p>
+
+    
+    
+
+    <a class="cta" href="https://app.whiskyhot.com">실시간 랭킹 &amp; 차트 전체보기 →</a>
+  </div>
+</body>
+</html>

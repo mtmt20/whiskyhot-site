@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>WhiskyHot 파이프라인 대시보드</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #16110B; color: #F2EFE9; font-family: -apple-system, 'Pretendard', 'Malgun Gothic', monospace; padding: 24px 16px 60px; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  .head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px 0; color: #F5B841; }
+  h2 { font-size: 0.95rem; color: #F2EFE9; margin: 32px 0 12px 0; border-left: 3px solid #D97706; padding-left: 10px; }
+  .subtitle { color: #8A7C68; font-size: 0.82rem; margin-bottom: 20px; }
+  .rerun-btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 10px;
+    background: linear-gradient(90deg, #F5B841, #D97706); color: #1A1207; font-weight: 800;
+    text-decoration: none; font-size: 0.82rem; white-space: nowrap;
+  }
+  .rerun-btn:hover { filter: brightness(1.08); }
+  .kpi-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .kpi { flex: 1; min-width: 150px; padding: 14px; border-radius: 10px; background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.18); }
+  .kpi-label { font-size: 0.72rem; color: #8A7C68; margin-bottom: 4px; }
+  .kpi-value { font-size: 1.3rem; font-weight: 800; color: #F5B841; }
+
+  .flow-row { display: flex; align-items: stretch; gap: 6px; overflow-x: auto; padding: 4px 2px 14px 2px; }
+  .stage-card {
+    flex: 1; min-width: 150px; padding: 12px; border-radius: 10px; background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(245,158,11,0.18); position: relative;
+  }
+  .stage-dot { width: 8px; height: 8px; border-radius: 50%; position: absolute; top: 12px; right: 12px; }
+  .stage-dot.ok { background: #34D399; box-shadow: 0 0 6px #34D399; }
+  .stage-dot.stale { background: #F87171; box-shadow: 0 0 6px #F87171; }
+  .stage-name { font-weight: 700; font-size: 0.82rem; margin-bottom: 6px; padding-right: 16px; }
+  .stage-detail { font-size: 0.68rem; color: #8A7C68; line-height: 1.4; min-height: 2.6em; }
+  .stage-time { font-size: 0.7rem; color: #F5B841; margin-top: 8px; font-weight: 700; }
+  .arrow { display: flex; align-items: center; color: #6B5F4E; font-size: 1.1rem; flex-shrink: 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid rgba(245,158,11,0.1); white-space: nowrap; }
+  th { color: #8A7C68; font-weight: 600; font-size: 0.7rem; }
+  .row-name { text-align: left; font-weight: 700; }
+  td.zero { color: #6B5F4E; }
+  .table-wrap { overflow-x: auto; }
+  .badge { padding: 2px 10px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; }
+  .badge.ok { background: rgba(52,211,153,0.15); color: #34D399; }
+  .badge.stale { background: rgba(220,38,38,0.18); color: #F87171; }
+  .badge.running { background: rgba(245,184,65,0.18); color: #F5B841; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 720px) { .two-col { grid-template-columns: 1fr; } }
+  .refresh-note { margin-top: 10px; color: #6B5F4E; font-size: 0.72rem; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head-row">
+      <div>
+        <h1>🔧 WhiskyHot 파이프라인 대시보드</h1>
+        <p class="subtitle">검색엔진 비노출 운영자 전용 페이지 · 생성 시각 2026-09-17 12:48</p>
+      </div>
+      <div style="text-align:right;">
+        <a id="rerunBtn" class="rerun-btn" href="#" target="_blank" rel="noopener">🔁 파이프라인 재수행 (Airflow 열기)</a>
+        <p class="refresh-note" style="margin-top:6px;">Airflow가 외부에 공개돼 있지 않아서, 이 버튼은 Docker가 돌아가는 PC에서 이 페이지를 볼 때만 열려요 (휴대폰·외부망에서는 접속 불가)</p>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">롤링 랭킹 최대 언급수</div><div class="kpi-value">23</div></div>
+      <div class="kpi"><div class="kpi-label">랭킹에 잡히는 위스키 수</div><div class="kpi-value">279</div></div>
+      <div class="kpi"><div class="kpi-label">최근 15회 실행 성공률</div><div class="kpi-value">80%</div></div>
+      <div class="kpi"><div class="kpi-label">이번 달 Snowflake 예상 비용</div><div class="kpi-value">$176.83</div></div>
+    </div>
+
+    <h2>파이프라인 흐름</h2>
+    <div class="flow-row"><div class="stage-card"><div class="stage-dot stale"></div><div class="stage-name">🕷️ 크롤러 → S3</div><div class="stage-detail">각 소스 크롤 후 S3 parquet 업로드</div><div class="stage-time">1일 전</div></div><div class="arrow">→</div><div class="stage-card"><div class="stage-dot stale"></div><div class="stage-name">🪣 Bronze (RAW)</div><div class="stage-detail">raw_community_posts 662,609행</div><div class="stage-time">1일 전</div></div><div class="arrow">→</div><div class="stage-card"><div class="stage-dot stale"></div><div class="stage-name">🥈 Silver (STG)</div><div class="stage-detail">stg_community_posts 31,799행 (뷰 - Bronze와 동시)</div><div class="stage-time">1일 전</div></div><div class="arrow">→</div><div class="stage-card"><div class="stage-dot ok"></div><div class="stage-name">🥇 Gold (MART)</div><div class="stage-detail">일별 랭킹 3,694행 · 롤링(48h) 랭킹 282행 · 주간 트렌드 · Hot Score 2,072행</div><div class="stage-time">3시간 전</div></div><div class="arrow">→</div><div class="stage-card"><div class="stage-dot ok"></div><div class="stage-name">🌐 랜딩페이지</div><div class="stage-detail">index.html 등 정적 파일 재생성</div><div class="stage-time">21분 전</div></div></div>
+    <p class="refresh-note">단계마다 초록 점 = 24시간 안에 갱신됨, 빨강 점 = 24시간 넘게 정체. Bronze/Silver는 크롤러가 멈추면 같이 멈춘다(Silver는 뷰라 자체 갱신 시각이 없어 Bronze 시각을 그대로 씀)</p>
+
+    <div class="two-col">
+      <div>
+        <h2>최근 파이프라인 실행 이력</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th style="text-align:left;">실행 ID</th><th>유형</th><th>상태</th><th>소요시간</th></tr></thead>
+            <tbody><tr><td class="row-name" style="text-align:left;">scheduled__2026-09-15T23:00:00+00:00</td><td>backfill</td><td><span class="badge stale">실패</span></td><td>114분</td></tr>
+<tr><td class="row-name" style="text-align:left;">scheduled__2026-09-15T09:00:00+00:00</td><td>scheduled</td><td><span class="badge stale">실패</span></td><td>27분</td></tr>
+<tr><td class="row-name" style="text-align:left;">scheduled__2026-09-14T23:00:00+00:00</td><td>scheduled</td><td><span class="badge stale">실패</span></td><td>163분</td></tr>
+<tr><td class="row-name" style="text-align:left;">scheduled__2026-09-14T09:00:00+00:00</td><td>scheduled</td><td><span class="badge ok">성공</span></td><td>225분</td></tr>
+<tr><td class="row-name" style="text-align:left;">scheduled__2026-09-13T23:00:00+00:00</td><td>scheduled</td><td><span class="badge ok">성공</span></td><td>570분</td></tr>
+<tr><td class="row-name" style="text-align:left;">scheduled__2026-09-13T09:00:00+00:00</td><td>scheduled</td><td><span class="badge ok">성공</span></td><td>1172분</td></tr>
+<tr><td class="row-name" style="text-align:left;">scheduled__2026-09-12T23:00:00+00:00</td><td>scheduled</td><td><span class="badge ok">성공</span></td><td>33분</td></tr>
+<tr><td class="row-name" style="text-align:left;">scheduled__2026-09-12T09:00:00+00:00</td><td>scheduled</td><td><span class="badge ok">성공</span></td><td>31분</td></tr>
+<tr><td class="row-name" style="text-align:left;">scheduled__2026-09-11T23:00:00+00:00</td><td>scheduled</td><td><span class="badge ok">성공</span></td><td>35분</td></tr>
+<tr><td class="row-name" style="text-align:left;">scheduled__2026-09-11T09:00:00+00:00</td><td>scheduled</td><td><span class="badge ok">성공</span></td><td>28분</td></tr>
+<tr><td class="row-name" style="text-align:left;">scheduled__2026-09-10T23:00:00+00:00</td><td>scheduled</td><td><span class="badge ok">성공</span></td><td>18분</td></tr>
+<tr><td class="row-name" style="text-align:left;">scheduled__2026-09-10T09:00:00+00:00</td><td>scheduled</td><td><span class="badge ok">성공</span></td><td>24분</td></tr>
+<tr><td class="row-name" style="text-align:left;">scheduled__2026-09-09T23:00:00+00:00</td><td>scheduled</td><td><span class="badge ok">성공</span></td><td>17분</td></tr>
+<tr><td class="row-name" style="text-align:left;">scheduled__2026-09-09T09:00:00+00:00</td><td>scheduled</td><td><span class="badge ok">성공</span></td><td>13분</td></tr>
+<tr><td class="row-name" style="text-align:left;">scheduled__2026-09-08T23:00:00+00:00</td><td>scheduled</td><td><span class="badge ok">성공</span></td><td>12분</td></tr>
+</tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h2>Snowflake 비용 추이 (최근 14일)</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th style="text-align:left;">날짜</th><th>크레딧</th><th>예상 비용</th></tr></thead>
+            <tbody><tr><td class="row-name">2026-09-17</td><td>6.25</td><td>$18.76</td></tr>
+<tr><td class="row-name">2026-09-16</td><td>16.67</td><td>$50.02</td></tr>
+<tr><td class="row-name">2026-09-15</td><td>3.24</td><td>$9.72</td></tr>
+<tr><td class="row-name">2026-09-14</td><td>10.44</td><td>$31.31</td></tr>
+<tr><td class="row-name">2026-09-13</td><td>0.42</td><td>$1.27</td></tr>
+<tr><td class="row-name">2026-09-12</td><td>1.16</td><td>$3.47</td></tr>
+<tr><td class="row-name">2026-09-11</td><td>3.77</td><td>$11.31</td></tr>
+<tr><td class="row-name">2026-09-10</td><td>1.48</td><td>$4.43</td></tr>
+<tr><td class="row-name">2026-09-09</td><td>0.74</td><td>$2.22</td></tr>
+<tr><td class="row-name">2026-09-08</td><td>0.31</td><td>$0.94</td></tr>
+<tr><td class="row-name">2026-09-07</td><td>0.35</td><td>$1.06</td></tr>
+<tr><td class="row-name">2026-09-06</td><td>1.70</td><td>$5.10</td></tr>
+<tr><td class="row-name">2026-09-05</td><td>2.99</td><td>$8.98</td></tr>
+<tr><td class="row-name">2026-09-04</td><td>2.28</td><td>$6.84</td></tr>
+<tr><td class="row-name">2026-09-03</td><td>2.86</td><td>$8.59</td></tr>
+</tbody>
+          </table>
+        </div>
+        <p class="refresh-note">크레딧당 $3.00 가정한 근사치입니다(실제 계약 단가와 다를 수 있음). Snowflake ACCOUNT_USAGE 뷰는 최대 3시간 지연될 수 있어요.</p>
+      </div>
+    </div>
+
+    <h2>소스별 수집 현황</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th style="text-align:left;">소스</th><th>09/08</th><th>09/09</th><th>09/10</th><th>09/11</th><th>09/12</th><th>09/13</th><th>09/14</th><th>09/15</th><th>09/16</th><th>09/17</th><th>최근 수집</th><th>상태</th></tr></thead>
+        <tbody>
+<tr><td class="row-name">dailyshot_deals</td><td class="">27100</td><td class="">40556</td><td class="">27052</td><td class="">26906</td><td class="">26886</td><td class="">171561</td><td class="">2242346</td><td class="">26864</td><td class="">47096</td><td class="">6731</td><td>2026-09-17 09:07</td><td><span class="badge ok">정상</span></td></tr>
+<tr><td class="row-name">dailyshot_ranking</td><td class="">800</td><td class="">1200</td><td class="">800</td><td class="">800</td><td class="">800</td><td class="">5277</td><td class="">67493</td><td class="">800</td><td class="">1400</td><td class="">200</td><td>2026-09-17 09:01</td><td><span class="badge ok">정상</span></td></tr>
+<tr><td class="row-name">dcinside_whiskey</td><td class="">996</td><td class="">1494</td><td class="">996</td><td class="">996</td><td class="">996</td><td class="">6750</td><td class="">85210</td><td class="">996</td><td class="">1494</td><td class="">249</td><td>2026-09-17 09:00</td><td><span class="badge ok">정상</span></td></tr>
+<tr><td class="row-name">naver_blog</td><td class="">2654</td><td class="">3974</td><td class="">2638</td><td class="">2658</td><td class="">2654</td><td class="">17521</td><td class="">228875</td><td class="">2682</td><td class="">4035</td><td class="">672</td><td>2026-09-17 09:00</td><td><span class="badge ok">정상</span></td></tr>
+<tr><td class="row-name">naver_cafe_whiskycognac</td><td class="">640</td><td class="">960</td><td class="">640</td><td class="">640</td><td class="">638</td><td class="">4353</td><td class="">54740</td><td class="">640</td><td class="">960</td><td class="">160</td><td>2026-09-17 09:00</td><td><span class="badge ok">정상</span></td></tr>
+<tr><td class="row-name">naver_cafe_wiswe</td><td class="">640</td><td class="">960</td><td class="">640</td><td class="">640</td><td class="">640</td><td class="">4174</td><td class="">53964</td><td class="">640</td><td class="">960</td><td class="">160</td><td>2026-09-17 09:00</td><td><span class="badge ok">정상</span></td></tr>
+<tr><td class="row-name">youtube_acousticdrink</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="">2</td><td class="zero">0</td><td class="zero">0</td><td>2026-09-15 09:08</td><td><span class="badge stale">정체</span></td></tr>
+<tr><td class="row-name">youtube_gimchangsu</td><td class="zero">0</td><td class="">8</td><td class="zero">0</td><td class="">8</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td>2026-09-11 09:08</td><td><span class="badge stale">정체</span></td></tr>
+<tr><td class="row-name">youtube_hanjanhaneunmj</td><td class="zero">0</td><td class="">44</td><td class="zero">0</td><td class="">46</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td>2026-09-11 09:08</td><td><span class="badge stale">정체</span></td></tr>
+<tr><td class="row-name">youtube_jubaeng</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="">46</td><td class="zero">0</td><td class="zero">0</td><td>2026-09-15 09:07</td><td><span class="badge stale">정체</span></td></tr>
+<tr><td class="row-name">youtube_matdeok</td><td class="zero">0</td><td class="">16</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="">16</td><td class="zero">0</td><td class="zero">0</td><td>2026-09-15 09:07</td><td><span class="badge stale">정체</span></td></tr>
+<tr><td class="row-name">youtube_wianeuisigan</td><td class="zero">0</td><td class="">38</td><td class="zero">0</td><td class="">42</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td>2026-09-11 09:08</td><td><span class="badge stale">정체</span></td></tr>
+<tr><td class="row-name">youtube_wiskichineunyeoja</td><td class="zero">0</td><td class="">54</td><td class="zero">0</td><td class="">62</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td>2026-09-11 09:07</td><td><span class="badge stale">정체</span></td></tr>
+
+        </tbody>
+      </table>
+    </div>
+    <p class="refresh-note">"정체"는 소스별 기준 주기(24시간, 커뮤니티 소스는 15시간) 안에 새 글이 안 들어온 경우입니다.</p>
+
+    <h2>🔥 에러 원인 분석 (최근 14일 로그 기준)</h2>
+    <div class="two-col">
+      <div>
+        <p class="refresh-note" style="margin-top:0;">태스크별 실패 횟수와 가장 흔했던 에러 - 로그 파일(logs/)을 직접 훑어서 집계한 값이라 task_fail 테이블이 리셋돼도 안 사라져요</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th style="text-align:left;">태스크</th><th>실패 횟수</th><th style="text-align:left;">가장 흔한 에러</th></tr></thead>
+            <tbody><tr><td class="row-name">copy_s3_to_snowflake_bronze</td><td>3</td><td style="text-align:left; white-space:normal;">airflow.exceptions.AirflowNotFoundException: The conn_id `snowflake_default` isn&#x27;t defined <span style="color:#6B5F4E;">×2</span></td></tr>
+<tr><td class="row-name">copy_s3_to_snowflake_deals_bronze</td><td>3</td><td style="text-align:left; white-space:normal;">airflow.exceptions.AirflowNotFoundException: The conn_id `snowflake_default` isn&#x27;t defined <span style="color:#6B5F4E;">×2</span></td></tr>
+<tr><td class="row-name">generate_landing_page</td><td>1</td><td style="text-align:left; white-space:normal;">airflow.exceptions.AirflowException: Bash command failed. The command returned a non-zero exit code 1. <span style="color:#6B5F4E;">×1</span></td></tr>
+<tr><td class="row-name">dbt_run_transformation</td><td>1</td><td style="text-align:left; white-space:normal;">airflow.exceptions.AirflowException: Task received SIGTERM signal <span style="color:#6B5F4E;">×1</span></td></tr>
+<tr><td class="row-name">run_whisky_crawler</td><td>1</td><td style="text-align:left; white-space:normal;">sqlite3.IntegrityError: ) FOREIGN KEY constraint failed <span style="color:#6B5F4E;">×1</span></td></tr>
+</tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <p class="refresh-note" style="margin-top:0;">날짜별 실패 건수 - 특정 날짜에 몰려있으면 그날 일시적 장애(예: 커넥션 소실, DC 차단)일 가능성이 높아요</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th style="text-align:left;">날짜</th><th>실패 건수</th></tr></thead>
+            <tbody><tr><td class="row-name">2026-09-15</td><td>3</td></tr>
+<tr><td class="row-name">2026-09-14</td><td>1</td></tr>
+<tr><td class="row-name">2026-09-06</td><td>1</td></tr>
+<tr><td class="row-name">2026-09-05</td><td>4</td></tr>
+</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var btn = document.getElementById('rerunBtn');
+      if (btn) btn.href = 'http://localhost:8080/dags/daily_whisky_ranking_pipeline/grid';
+    });
+    </script>
+</body>
+</html>
