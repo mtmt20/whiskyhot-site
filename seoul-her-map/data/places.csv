@@ -1,4 +1,4 @@
-slug,area,category,name_ko,name_zh,one_liner_zh,detail_zh,price_zh,hours,address_ko,address_zh,tip_zh,walk_min_from_station,order,image,rating
-seoul-botanic-park,magok,spot,서울식물원,首尔植物园,落地首尔的第一口绿色,温室里有热带和地中海两个展区，下午三点以后光线最好拍照。,免费(温室 5000韩元),09:30-18:00 周一休,서울 강서구 마곡동로 161,首尔江西区麻谷东路161,温室票在门口自助机买，支持支付宝。,7,1,seoul-botanic-park.jpg,4.6
-lg-arts-center,magok,spot,LG아트센터 서울,LG艺术中心首尔,安藤忠雄设计的清水混凝土,不看演出也可以进大堂拍照，楼梯和天窗是打卡点。,免费入场,10:00-22:00,서울 강서구 마곡중앙로 136,首尔江西区麻谷中央路136,和植物园只隔一条街，建议连着逛。,3,2,lg-arts-center.jpg,4.5
-sample-cafe,magok,cafe,예시 카페 (직접 교체),示例咖啡厅(请替换),一句话钩子写在这里,两三句话说这家店为什么值得来。写具体：招牌、座位、光线、适合几个人。,人均 8000韩元,11:00-21:00,서울 강서구 마곡동,首尔江西区麻谷洞,小贴士：什么时间去、点什么、怎么避开排队。,5,3,sample-cafe.jpg,4.4
+slug,area,category,name_ko,name_zh,one_liner_zh,detail_zh,price_zh,hours,address_ko,address_zh,tip_zh,avoid_zh,vibe,photo,quiet,vibe_tag_zh,walk_min_from_station,order,image,image_2,image_3,rating
+seoul-botanic-park,magok,spot,서울식물원,首尔植物园,落地首尔的第一口绿色,温室里有热带和地中海两个展区。下午三点以后光线斜进来，随手拍都有松弛感。,免费(温室 5000韩元),09:30-18:00 周一休,서울 강서구 마곡동로 161,首尔江西区麻谷东路161,温室票在门口自助机买，支持支付宝。,周末下午人多，想安静拍照请工作日上午来。,4,5,3,松弛感,7,1,seoul-botanic-park.jpg,seoul-botanic-park-2.jpg,seoul-botanic-park-3.jpg,4.6
+lg-arts-center,magok,spot,LG아트센터 서울,LG艺术中心首尔,安藤忠雄的清水混凝土,不看演出也能进大堂。楼梯和天窗那一块是本地女生的固定机位，穿浅色最出片。,免费入场,10:00-22:00,서울 강서구 마곡중앙로 136,首尔江西区麻谷中央路136,和植物园只隔一条街，建议连着逛。,演出散场时段大堂会很挤。,4,5,4,极简,3,2,lg-arts-center.jpg,,,4.5
+sample-cafe,magok,cafe,예시 카페 (직접 교체),示例咖啡厅(请替换),一句话钩子写在这里(12字内),两三句话说为什么值得来。写具体：招牌、座位、光线、适合几个人。,人均 8000韩元,11:00-21:00,서울 강서구 마곡동,首尔江西区麻谷洞,小贴士：什么时间去、点什么、怎么避开排队。,避雷：什么不要点、什么时段别来。留空则不显示。,4,4,3,氛围感,5,3,sample-cafe.jpg,,,4.4

@@ -8,7 +8,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { readCsv, render, esc, today, p } from "./lib/util.mjs";
-import { BRAND, makeTitle, makeBody, makeTags, makeNarration, makeChecklist } from "./lib/copy.mjs";
+import { BRAND, makeTitle, makeBody, makeTags, makeNarration, makeChecklist, makeVibeLine, makeSticker, makeAvgPrice } from "./lib/copy.mjs";
 import { renderDir } from "./render.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a, i, arr) =>
@@ -51,16 +51,21 @@ const T = n => fs.readFileSync(p("templates", n), "utf8");
 const img = f => (f && fs.existsSync(p("images", f))) ? path.relative(cardsDir, p("images", f)) : "";
 const mascot = fs.existsSync(p("images/mascot.png")) ? path.relative(cardsDir, p("images/mascot.png")) : "";
 const common = { brand_zh: BRAND.zh, brand_en: BRAND.en, ai_label: BRAND.aiLabel, area_zh: area.area_zh, area_en: area.area_en,
-  station_zh: area.station_zh, count, date: today() };
+  station_zh: area.station_zh, count, date: today(), date_short: today().slice(0, 7).replace("-", ".") };
+const dots = n => Array.from({ length: 5 }, (_, i) => `<span class="${i < (+n || 0) ? "on" : ""}"></span>`).join("");
 
 const write = (i, name, html) => fs.writeFileSync(path.join(cardsDir, `${String(i).padStart(2, "0")}-${name}.html`), html);
 
 write(1, "cover", render(T("cover.html"), { ...common, signature: esc(signature), category_zh: category.category_zh,
-  unit_zh: category.unit_zh, hook_zh: esc(area.hook_zh.replace("｜", " · ")), cover_image: img(places[0].image) }));
+  unit_zh: category.unit_zh, hook_zh: esc(area.hook_zh.replace("｜", " · ")),
+  cover_image: img(places[0].image), cover_image_2: img(places[0].image_2 || (places[1] || {}).image), cover_image_3: img(places[0].image_3 || (places[2] || {}).image),
+  sticker_zh: esc(makeSticker(area)), avg_price_zh: esc(makeAvgPrice(places)), vibe_line: esc(makeVibeLine(places)) }));
 
 places.forEach((pl, i) => write(i + 2, pl.slug, render(T("place.html"), { ...common, ...Object.fromEntries(Object.entries(pl).map(([k, v]) => [k, esc(v)])),
   order: i + 1, category_zh: (cats.find(c => c.category === pl.category) || category).category_zh,
-  walk_min: pl.walk_min_from_station || "?", station_short: area.station_zh.split("(")[0], image: img(pl.image) })));
+  walk_min: pl.walk_min_from_station || "?", station_short: area.station_zh.split("(")[0], image: img(pl.image),
+  vibe_sticker: esc(pl.vibe_tag_zh || "本地人认证"), dots_vibe: dots(pl.vibe), dots_photo: dots(pl.photo), dots_quiet: dots(pl.quiet),
+  avoid_display: pl.avoid_zh ? "block" : "none", price_zh: esc((pl.price_zh || "").replace(/^人均\s*/, "")) })));
 
 const routeItems = places.map((pl, i) => `<li><div class="dot">${i + 1}</div><div><div class="nm">${esc(pl.name_zh)}</div><div class="mt">${esc(pl.one_liner_zh)}</div></div><div class="walk">${esc(pl.walk_min_from_station || "?")} MIN</div></li>`).join("");
 const totalWalk = places.reduce((s, x) => s + (+x.walk_min_from_station || 0), 0);
