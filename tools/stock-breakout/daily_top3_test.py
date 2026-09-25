@@ -2,46 +2,49 @@
 """
 날마다 3종목 전고점 돌파 테스트 (Daily Top-3 Breakout Walk-Forward Test)
 
-실존 매매기법을 점수화해 매일 상위 3종목을 고르고, 2~3거래일 안에 전고점을
-돌파했는지 과거 전 구간에 걸쳐 하루씩 검증한다. 미래 데이터는 쓰지 않는다
-(t일 종가까지로 선정 → t+1일 진입).
+실존 매매기법과 30여 개 지표로 매일 상위 3종목을 고르고, 2~3거래일 안에
+전고점을 돌파했는지 과거 전 구간에서 하루씩 검증한다.
+t일 종가까지의 정보로만 고르고 t+1일에 진입하므로 미래 데이터를 쓰지 않는다.
 
-적용한 매매기법
-  - Minervini 트렌드 템플릿 + VCP(변동성 수축, 거래량 고갈)
-  - O'Neil CAN SLIM 기술적 요소: 상대강도(RS) 등급, 상승/하락 거래량비, 포켓피벗
-  - Wyckoff 매집 판별: OBV 기울기, 가격 횡보 중 OBV 상승(다이버전스), CMF(자금흐름)
-  - Darvas 박스: 좁은 박스 상단 근접
-  - 테마/신기술 모멘텀: AI반도체·HBM, 2차전지, 방산, 조선, 원전, 로봇, 바이오 등
-    테마별 20일 상대강도 순위 → 주도 테마 가점
-  - 시장 추세 필터: 유니버스 동일가중 지수가 20일선 위일 때만 매매(옵션)
+전략
+  minervini  트렌드 템플릿 + VCP·스퀴즈
+  oneil      RS 등급·RS선 신고가 + 거래량 매집
+  wyckoff    OBV·CMF·MFI·포켓피벗 등 매집 + 변동성 수축
+  darvas     좁은 박스 상단
+  squeeze    볼린저·켈트너 스퀴즈, NR7, ATR 수축
+  supply     매물대(위쪽 대기물량)·앵커드 VWAP·윗꼬리
+  theme      주도 테마·신기술 모멘텀
+  flows      외국인·기관 순매수, 공매도 잔고 감소 (수급 데이터 있을 때)
+  combo      위 요소 혼합
+  ml         모든 지표로 워크포워드 로지스틱 회귀, 확률 ≥ --min-prob 일 때만 매수
 
 매매시간 고정 (거래량이 몰리는 시간)
-  - 일봉 모드: t+1일 시가(09:00 동시호가~장초반) 진입, 미돌파 시 N일째 종가(15:20 동시호가) 청산
-  - 분봉 모드(--intraday): 60분봉에서 종목별 평균 거래량이 가장 큰 시간대를 자동 탐지해
-    그 시간 봉의 평균가((H+L+C)/3)로 진입·청산 시각을 고정
+  일봉 모드: t+1 시가(09:00 동시호가) 진입 → 목표/손절/N일째 종가(15:20 동시호가) 청산
+  분봉 모드(--intraday): 종목별 거래량 최대 60분봉 시각에 진입·청산
 
 사용 예
-  python daily_top3_test.py                          # 한국 유니버스, 5년 백테스트
-  python daily_top3_test.py --strategy combo --days 3 --picks 3
-  python daily_top3_test.py --intraday               # 60분봉(최근 730일) 기반
-  python daily_top3_test.py --journal picks.csv      # 오늘 3종목을 저널에 기록 + 지난 픽 채점
-  python daily_top3_test.py --csv-dir ./ohlcv        # 오프라인 CSV
+  python daily_top3_test.py                         # 한국 유니버스 5년, 전 전략
+  python daily_top3_test.py --flows                 # KRX 수급 포함 (KRX_ID/KRX_PW 필요)
+  python daily_top3_test.py --strategy ml --min-prob 0.65 --days 2
+  python daily_top3_test.py --intraday --days 2
+  python daily_top3_test.py --journal picks.csv     # 오늘 3종목 기록 + 지난 픽 채점
 """
 from __future__ import annotations
 
 import argparse
+import math
 import os
 import sys
-from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from breakout_finder import (  # noqa: E402
-    KR_UNIVERSE, US_UNIVERSE, load_from_csv_dir, load_from_yfinance, rsi,
-)
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+from breakout_finder import KR_UNIVERSE, US_UNIVERSE, load_from_csv_dir, load_from_yfinance  # noqa: E402
+from indicators import FEATURES, TestConfig, compute  # noqa: E402
+from flows import fetch_flows, load_flows  # noqa: E402
 
 # --------------------------------------------------------------------------- #
 # 테마 / 신기술 분류 (필요 시 수정)
@@ -67,169 +70,172 @@ for _th, _ts in THEMES.items():
     for _t in _ts:
         TICKER_THEMES.setdefault(_t, []).append(_th)
 
-# 전략 프리셋: 각 요소 가중치
+# 지표 그룹: (지표, 높을수록 좋은가)
+SIGN = dict(FEATURES)
+GROUPS: Dict[str, List[str]] = {
+    "trend": ["trend", "hi52", "dmi_bull", "ichimoku", "adx"],
+    "rs": ["rs_raw", "rsline_high", "ret20"],
+    "vcp": ["contraction", "range10", "vol_dryup", "squeeze_days", "bbw_pct", "nr7", "atr_contract"],
+    "accum": ["ud_ratio", "obv_slope", "obv_div", "obv_high", "cmf", "mfi", "force",
+              "pocket_pivots", "vol_spike_up", "clv5"],
+    "supply": ["overhead_supply", "avwap_gap", "upper_wick5"],
+    "flows": ["flow20", "foreign_streak", "short_chg20"],
+    "box": ["box"],
+    "prox": ["dist"],
+}
 STRATEGIES: Dict[str, Dict[str, float]] = {
     "minervini": {"trend": 0.40, "vcp": 0.35, "rs": 0.15, "prox": 0.10},
     "oneil":     {"rs": 0.40, "accum": 0.30, "trend": 0.15, "prox": 0.15},
-    "wyckoff":   {"accum": 0.60, "vcp": 0.20, "prox": 0.20},
+    "wyckoff":   {"accum": 0.55, "vcp": 0.25, "prox": 0.20},
     "darvas":    {"box": 0.60, "rs": 0.20, "prox": 0.20},
+    "squeeze":   {"vcp": 0.60, "trend": 0.20, "prox": 0.20},
+    "supply":    {"supply": 0.60, "accum": 0.20, "prox": 0.20},
     "theme":     {"theme": 0.50, "rs": 0.30, "prox": 0.20},
-    "combo":     {"trend": 0.15, "vcp": 0.15, "rs": 0.15, "accum": 0.20,
-                  "box": 0.05, "theme": 0.15, "prox": 0.15},
+    "flows":     {"flows": 0.60, "accum": 0.20, "prox": 0.20},
+    "combo":     {"trend": 0.12, "vcp": 0.12, "rs": 0.12, "accum": 0.14, "supply": 0.12,
+                  "flows": 0.10, "box": 0.04, "theme": 0.12, "prox": 0.12},
+}
+
+FEATURE_KO = {
+    "dist": "전고점 이격", "days_since_high": "전고점 경과일", "touches60": "전고점 근접 횟수",
+    "trend": "미너비니 트렌드템플릿", "hi52": "52주 신고가 근접도", "disparity20": "20일 이격도",
+    "adx": "ADX 추세강도", "dmi_bull": "DMI 매수우위", "ichimoku": "일목균형표 호조",
+    "rs_raw": "RS 상대강도", "ret20": "20일 수익률", "rsline_high": "RS선 신고가 근접",
+    "contraction": "변동성 수축비", "range10": "10일 레인지 폭",
+    "vol_dryup": "거래량 고갈", "squeeze_days": "TTM 스퀴즈 지속", "bbw_pct": "볼린저밴드폭 백분위",
+    "nr7": "NR7(7일 최소폭)", "atr_contract": "ATR 수축", "ud_ratio": "상승/하락 거래량비",
+    "obv_slope": "OBV 기울기", "obv_div": "OBV 매집 다이버전스", "obv_high": "OBV 선행 신고가",
+    "cmf": "CMF 자금흐름", "mfi": "MFI 자금흐름지수", "force": "엘더 포스인덱스",
+    "pocket_pivots": "포켓피벗 횟수", "vol_spike_up": "대량거래 양봉 횟수", "clv5": "종가 위치(CLV)",
+    "upper_wick5": "윗꼬리 비율", "overhead_supply": "위쪽 매물대 비중", "avwap_gap": "고점앵커 VWAP 대비",
+    "box": "다바스 박스 상단", "rsi14": "RSI", "flow20": "외국인+기관 순매수 강도",
+    "foreign_streak": "외국인 연속 순매수", "short_chg20": "공매도잔고 감소",
+    "theme": "테마 강도", "breadth": "시장 폭(50일선 위 비율)",
 }
 
 
-@dataclass
-class TestConfig:
-    lookback: int = 120     # 전고점 산정 기간
-    gap: int = 5            # 전고점 산정에서 제외할 최근 일수
-    near: float = 0.05      # 전고점 아래 이 비율 이내만 후보
-    days: int = 3           # 돌파 판정 기간(2~3일)
-    picks: int = 3          # 하루 선정 종목 수
-    margin: float = 0.0     # 돌파 인정 여유(0.005 = 전고점 +0.5%)
-    regime_filter: bool = True
-    start_offset: int = 260  # 지표 준비 기간(52주)
-
-
 # --------------------------------------------------------------------------- #
-# 종목별 지표
+# 패널 / 점수
 # --------------------------------------------------------------------------- #
-def indicators(df: pd.DataFrame, cfg: TestConfig) -> pd.DataFrame:
-    d = pd.DataFrame(index=df.index)
-    o, h, l, c = df["Open"], df["High"], df["Low"], df["Close"]
-    v = df["Volume"].astype(float)
-    d["Open"], d["High"], d["Low"], d["Close"], d["Volume"] = o, h, l, c, v
-
-    # 전고점
-    d["prior_high"] = h.shift(cfg.gap).rolling(cfg.lookback, min_periods=cfg.lookback // 2).max()
-    d["dist"] = (d["prior_high"] - c) / d["prior_high"]
-
-    # Minervini 트렌드 템플릿 (RS 조건 제외한 7개 조건 충족 비율)
-    ma50, ma150, ma200 = c.rolling(50).mean(), c.rolling(150).mean(), c.rolling(200).mean()
-    hi252, lo252 = h.rolling(252, min_periods=200).max(), l.rolling(252, min_periods=200).min()
-    conds = [
-        c > ma150, c > ma200, ma150 > ma200, ma200 > ma200.shift(20),
-        (ma50 > ma150) & (ma50 > ma200), c > ma50,
-        (c >= lo252 * 1.30) & (c >= hi252 * 0.75),
-    ]
-    d["trend"] = sum(x.astype(float) for x in conds) / len(conds)
-    d.loc[ma200.isna(), "trend"] = np.nan
-
-    # RS 원점수 (IBD 방식 가중 수익률) → 날짜별 백분위는 패널에서 계산
-    d["rs_raw"] = (0.4 * c.pct_change(63) + 0.2 * c.pct_change(126)
-                   + 0.2 * c.pct_change(189) + 0.2 * c.pct_change(252))
-    d["ret20"] = c.pct_change(20)
-
-    # VCP: 단기 변동성/장기 변동성(낮을수록 수축), 거래량 고갈
-    r = c.pct_change()
-    d["contraction"] = r.rolling(10).std() / r.rolling(50).std()
-    d["range10"] = (h.rolling(10).max() - l.rolling(10).min()) / c
-    d["vol_dryup"] = v.rolling(5).mean() / v.rolling(50).mean()
-
-    # 매집(Wyckoff/O'Neil): 상승·하락 거래량비, OBV 기울기, CMF, 포켓피벗
-    up, dn = (c > c.shift()), (c < c.shift())
-    d["ud_ratio"] = (v.where(up, 0).rolling(50).sum() / v.where(dn, 0).rolling(50).sum().replace(0, np.nan))
-    obv = (np.sign(c.diff()).fillna(0) * v).cumsum()
-    d["obv_slope"] = (obv - obv.shift(20)) / v.rolling(20).sum().replace(0, np.nan)
-    # 가격은 횡보(ret20 작음)인데 OBV 상승 → 매집 다이버전스
-    d["obv_div"] = d["obv_slope"] - d["ret20"].abs() * 2
-    mfm = ((c - l) - (h - c)) / (h - l).replace(0, np.nan)
-    d["cmf"] = (mfm.fillna(0) * v).rolling(20).sum() / v.rolling(20).sum().replace(0, np.nan)
-    max_down_vol10 = v.where(dn, 0).shift(1).rolling(10).max()
-    pp = (up & (v > max_down_vol10)).astype(float)
-    d["pocket_pivots"] = pp.rolling(10).sum()
-
-    # Darvas 박스: 20일 박스 폭이 좁고 상단 근처
-    hi20, lo20 = h.rolling(20).max(), l.rolling(20).min()
-    box_w = (hi20 - lo20) / hi20
-    d["box"] = ((c - lo20) / (hi20 - lo20).replace(0, np.nan)).fillna(0.5) * (box_w < 0.15).astype(float)
-
-    d["rsi14"] = rsi(c, 14)
-    d["liquidity"] = (c * v).rolling(20).mean()
-
-    # 결과(라벨): t+1 ~ t+days 고가가 전고점 돌파?
-    target = d["prior_high"] * (1 + cfg.margin)
-    fut_highs = pd.concat([h.shift(-k) for k in range(1, cfg.days + 1)], axis=1)
-    d["hit"] = (fut_highs.max(axis=1) > target).astype(float)
-    d.loc[fut_highs.isna().any(axis=1), "hit"] = np.nan
-    for k in (1, 2, 3):
-        fh = pd.concat([h.shift(-j) for j in range(1, k + 1)], axis=1)
-        d[f"hit{k}"] = (fh.max(axis=1) > target).astype(float)
-        d.loc[fh.isna().any(axis=1), f"hit{k}"] = np.nan
-
-    # 일봉 매매 시뮬: t+1 시가 진입, 목표가 도달 시 목표가 청산, 아니면 t+days 종가 청산
-    entry = o.shift(-1)
-    d["entry"] = entry
-    exit_close = c.shift(-cfg.days)
-    gap_above = entry >= target
-    d["pnl"] = np.where(d["hit"] == 1,
-                        np.where(gap_above, exit_close / entry - 1, target / entry - 1),
-                        exit_close / entry - 1)
-    d.loc[d["hit"].isna(), "pnl"] = np.nan
-    d["gap_entry"] = gap_above.astype(float)
-    return d
-
-
 def panel(frames: Dict[str, pd.DataFrame], col: str) -> pd.DataFrame:
     return pd.DataFrame({t: f[col] for t, f in frames.items()})
 
 
-def pct_rank(p: pd.DataFrame, ascending: bool = True) -> pd.DataFrame:
-    """날짜별 단면 백분위(0~1)."""
-    return p.rank(axis=1, pct=True, ascending=ascending)
+def market_index(data: Dict[str, pd.DataFrame]) -> pd.Series:
+    """유니버스 동일가중 지수 (일간수익률 평균 누적)."""
+    rets = pd.DataFrame({t: df["Close"].pct_change() for t, df in data.items()})
+    return (1 + rets.mean(axis=1).fillna(0)).cumprod()
 
 
-def build_scores(frames: Dict[str, pd.DataFrame], cfg: TestConfig) -> Dict[str, pd.DataFrame]:
-    P = {k: panel(frames, k) for k in [
-        "dist", "trend", "rs_raw", "ret20", "contraction", "range10", "vol_dryup", "ud_ratio",
-        "obv_slope", "obv_div", "cmf", "pocket_pivots", "box", "liquidity", "Close"]}
+def build_context(frames: Dict[str, pd.DataFrame], data: Dict[str, pd.DataFrame],
+                  cfg: TestConfig) -> dict:
+    names = [f for f, _ in FEATURES]
+    P = {k: panel(frames, k) for k in names + ["liquidity", "Close", "hit", "hit1", "hit2", "hit3",
+                                               "pnl", "gap_entry", "stopped", "prior_high"]}
+    # 날짜별 단면 백분위 (방향 보정: 높을수록 좋은 쪽)
+    R = {k: P[k].rank(axis=1, pct=True, ascending=SIGN[k]) for k in names}
+    avail = {k for k in names if P[k].notna().any().any()}
 
     comp: Dict[str, pd.DataFrame] = {}
-    comp["trend"] = P["trend"]
-    comp["rs"] = pct_rank(P["rs_raw"])
-    comp["vcp"] = (pct_rank(P["contraction"], ascending=False) + pct_rank(P["range10"], ascending=False)
-                   + pct_rank(P["vol_dryup"], ascending=False)) / 3
-    comp["accum"] = (pct_rank(P["ud_ratio"]) + pct_rank(P["obv_slope"]) + pct_rank(P["obv_div"])
-                     + pct_rank(P["cmf"]) + pct_rank(P["pocket_pivots"])) / 5
-    comp["box"] = P["box"]
-    comp["prox"] = pct_rank(P["dist"], ascending=False)  # 전고점에 가까울수록 높음
+    for g, cols in GROUPS.items():
+        cs = [R[k] for k in cols if k in avail]
+        comp[g] = (sum(x.fillna(0.5) for x in cs) / len(cs)) if cs else None
 
-    # 테마 강도: 테마 평균 20일 수익률의 날짜별 순위 → 종목은 소속 테마 중 최고 점수
     ret20 = P["ret20"]
-    theme_strength = {}
-    for th, ts in THEMES.items():
-        cols = [t for t in ts if t in ret20.columns]
-        if cols:
-            theme_strength[th] = ret20[cols].mean(axis=1)
-    if theme_strength:
-        ts_rank = pd.DataFrame(theme_strength).rank(axis=1, pct=True)
-        theme_score = pd.DataFrame(0.0, index=ret20.index, columns=ret20.columns)
+    strength = {th: ret20[[t for t in ts if t in ret20]].mean(axis=1)
+                for th, ts in THEMES.items() if any(t in ret20 for t in ts)}
+    theme = pd.DataFrame(0.0, index=ret20.index, columns=ret20.columns)
+    if strength:
+        ts_rank = pd.DataFrame(strength).rank(axis=1, pct=True)
         for t in ret20.columns:
-            ths = [th for th in TICKER_THEMES.get(t, []) if th in ts_rank.columns]
+            ths = [th for th in TICKER_THEMES.get(t, []) if th in ts_rank]
             if ths:
-                theme_score[t] = ts_rank[ths].max(axis=1)
-        comp["theme"] = theme_score
-    else:
-        comp["theme"] = pd.DataFrame(0.0, index=ret20.index, columns=ret20.columns)
+                theme[t] = ts_rank[ths].max(axis=1)
+    comp["theme"] = theme
 
-    # 시장 추세: 동일가중 지수가 20일선 위
-    idx = (P["Close"] / P["Close"].iloc[0]).mean(axis=1)
-    regime_ok = idx > idx.rolling(20).mean()
+    idx = market_index(data).reindex(ret20.index)
+    ma50 = P["Close"].rolling(50).mean()
+    breadth = (P["Close"] > ma50).sum(axis=1) / P["Close"].notna().sum(axis=1).replace(0, np.nan)
+    regime_ok = (idx > idx.rolling(20).mean()) & (breadth > 0.4)
 
-    # 후보 조건: 전고점 아래 near 이내 + 유동성 하위 20% 제외
-    liq_ok = pct_rank(P["liquidity"]) >= 0.2
+    liq_ok = P["liquidity"].rank(axis=1, pct=True) >= 0.2
     eligible = (P["dist"] >= 0) & (P["dist"] <= cfg.near) & liq_ok
 
-    return {"comp": comp, "eligible": eligible, "regime_ok": regime_ok}
+    return {"P": P, "R": R, "comp": comp, "avail": avail, "eligible": eligible,
+            "regime_ok": regime_ok, "breadth": breadth, "theme": theme}
 
 
-def strategy_score(comp: Dict[str, pd.DataFrame], weights: Dict[str, float]) -> pd.DataFrame:
-    tot = sum(weights.values())
-    s = None
-    for k, w in weights.items():
-        part = comp[k].fillna(0) * (w / tot)
-        s = part if s is None else s + part
-    return s
+def strategy_score(comp, weights) -> Optional[pd.DataFrame]:
+    parts = [(comp[k], w) for k, w in weights.items() if comp.get(k) is not None]
+    if not parts:
+        return None
+    tot = sum(w for _, w in parts)
+    return sum(x.fillna(0) * (w / tot) for x, w in parts)
+
+
+# --------------------------------------------------------------------------- #
+# 워크포워드 ML (L2 로지스틱 회귀, 뉴턴법)
+# --------------------------------------------------------------------------- #
+def fit_logit(X: np.ndarray, y: np.ndarray, l2: float = 5.0, iters: int = 25) -> np.ndarray:
+    Xb = np.c_[np.ones(len(X)), X]
+    w = np.zeros(Xb.shape[1])
+    reg = np.eye(Xb.shape[1]) * l2
+    reg[0, 0] = 0
+    for _ in range(iters):
+        p = 1 / (1 + np.exp(-np.clip(Xb @ w, -30, 30)))
+        g = Xb.T @ (p - y) + reg @ w
+        H = (Xb * (p * (1 - p))[:, None]).T @ Xb + reg
+        step = np.linalg.solve(H, g)
+        w -= step
+        if np.abs(step).max() < 1e-6:
+            break
+    return w
+
+
+def predict_logit(w: np.ndarray, X: np.ndarray) -> np.ndarray:
+    return 1 / (1 + np.exp(-np.clip(np.c_[np.ones(len(X)), X] @ w, -30, 30)))
+
+
+def event_table(ctx: dict) -> pd.DataFrame:
+    """후보(eligible) 행만 모아 ML·지표 리포트용 테이블 생성."""
+    elig = ctx["eligible"]
+    cols = sorted(ctx["avail"])
+    stack = {k: ctx["R"][k].where(elig).stack() for k in cols}
+    ev = pd.DataFrame(stack)
+    ev["theme"] = ctx["theme"].where(elig).stack()
+    b = ctx["breadth"]
+    ev["breadth"] = b.reindex(ev.index.get_level_values(0)).values
+    for k in ("hit", "hit1", "hit2", "hit3", "pnl", "gap_entry", "stopped"):
+        ev[k] = ctx["P"][k].stack().reindex(ev.index)
+    raw = {k: ctx["P"][k].stack().reindex(ev.index) for k in cols}
+    ev = ev.join(pd.DataFrame(raw).add_prefix("raw_"))
+    ev.index.names = ["date", "ticker"]
+    return ev
+
+
+def ml_feature_cols(ev: pd.DataFrame) -> List[str]:
+    return [c for c in ev.columns if not c.startswith("raw_")
+            and c not in ("hit", "hit1", "hit2", "hit3", "pnl", "gap_entry", "stopped")]
+
+
+def walk_forward_probs(ev: pd.DataFrame, dates: pd.Index, cfg: TestConfig,
+                       retrain_every: int = 20, min_train_days: int = 250) -> pd.Series:
+    feats = ml_feature_cols(ev)
+    X_all = ev[feats].fillna(0.5).values
+    date_pos = pd.Series(np.arange(len(dates)), index=dates)
+    ev_pos = date_pos.reindex(ev.index.get_level_values(0)).values
+    probs = pd.Series(np.nan, index=ev.index)
+    y_all = ev["hit"].values
+    first = int(np.nanmin(ev_pos)) + min_train_days if len(ev_pos) else len(dates)
+    for start in range(first, len(dates), retrain_every):
+        known = (ev_pos <= start - cfg.days - 1) & ~np.isnan(y_all)  # 라벨이 확정된 과거만
+        if known.sum() < 300 or len(np.unique(y_all[known])) < 2:
+            continue
+        w = fit_logit(X_all[known], y_all[known])
+        seg = (ev_pos >= start) & (ev_pos < start + retrain_every)
+        if seg.any():
+            probs.values[seg] = predict_logit(w, X_all[seg])
+    return probs
 
 
 # --------------------------------------------------------------------------- #
@@ -239,10 +245,7 @@ def peak_volume_hour(intra: pd.DataFrame) -> int:
     return int(intra.groupby(intra.index.hour)["Volume"].mean().idxmax())
 
 
-def intraday_outcome(intra: pd.DataFrame, window_days: List[pd.Timestamp], target: float,
-                     hour: int) -> Optional[dict]:
-    """window_days[0](선정 다음 거래일) hour 봉에 진입, window_days 동안 돌파 여부.
-    미돌파면 마지막 날 같은 hour 봉에서 청산. 분봉이 없는 날이 있으면 None."""
+def intraday_outcome(intra, window_days, target, hour, cost) -> Optional[dict]:
     have = set(intra.index.normalize())
     if any(x.normalize() not in have for x in window_days):
         return None
@@ -253,13 +256,18 @@ def intraday_outcome(intra: pd.DataFrame, window_days: List[pd.Timestamp], targe
     ebar = ebar.iloc[0]
     entry = float((ebar["High"] + ebar["Low"] + ebar["Close"]) / 3)
     after = intra[(intra.index > ebar.name) & (intra.index.normalize() <= window_days[-1])]
-    hit = bool(entry >= target or (not after.empty and after["High"].max() > target))
+    before = day1[day1.index < ebar.name]
+    hit = bool((not before.empty and before["High"].max() > target) or entry >= target
+               or (not after.empty and after["High"].max() > target))
+    if entry >= target:
+        return {"hit": float(hit), "pnl": np.nan, "gap": 1.0}
     lastday = intra[intra.index.normalize() == window_days[-1]]
     xbar = lastday[lastday.index.hour == hour]
     exit_px = float(((xbar["High"] + xbar["Low"] + xbar["Close"]) / 3).iloc[0]) if not xbar.empty \
         else float(lastday["Close"].iloc[-1])
-    pnl = (target / entry - 1) if (hit and entry < target) else (exit_px / entry - 1)
-    return {"hit": float(hit), "pnl": pnl, "entry": entry}
+    tgt_hit_after = not after.empty and after["High"].max() > target
+    pnl = (target / entry - 1) if tgt_hit_after else (exit_px / entry - 1)
+    return {"hit": float(hit), "pnl": pnl - cost, "gap": 0.0}
 
 
 def load_intraday(tickers: List[str], csv_dir: Optional[str]) -> Dict[str, pd.DataFrame]:
@@ -288,95 +296,159 @@ def load_intraday(tickers: List[str], csv_dir: Optional[str]) -> Dict[str, pd.Da
 # --------------------------------------------------------------------------- #
 # 백테스트
 # --------------------------------------------------------------------------- #
-def backtest(frames: Dict[str, pd.DataFrame], cfg: TestConfig, strategies: List[str],
-             intraday: Optional[Dict[str, pd.DataFrame]] = None) -> dict:
-    S = build_scores(frames, cfg)
-    comp, elig, regime = S["comp"], S["eligible"], S["regime_ok"]
-    hit = panel(frames, "hit")
-    hits = {k: panel(frames, f"hit{k}") for k in (1, 2, 3)}
-    pnl = panel(frames, "pnl")
-    gap = panel(frames, "gap_entry")
-    ph = panel(frames, "prior_high")
-    dates = elig.index[cfg.start_offset:]
+def backtest(ctx: dict, ev: pd.DataFrame, cfg: TestConfig, strategies: List[str],
+             intraday: Optional[Dict[str, pd.DataFrame]] = None) -> Dict[str, pd.DataFrame]:
+    elig, regime, P = ctx["eligible"], ctx["regime_ok"], ctx["P"]
+    all_dates = elig.index
+    dates = all_dates[cfg.start_offset:]
     peak_hours = {t: peak_volume_hour(df) for t, df in (intraday or {}).items()}
+    ctx["peak_hours"] = peak_hours
+    ml_probs = walk_forward_probs(ev, all_dates, cfg) if "ml" in strategies else None
+    ctx["ml_probs"] = ml_probs
 
     results = {}
     for name in strategies:
-        score = strategy_score(comp, STRATEGIES[name])
+        if name == "ml":
+            score = ml_probs.unstack() if ml_probs is not None else None
+        else:
+            score = strategy_score(ctx["comp"], STRATEGIES[name])
+        if score is None:
+            continue
+        score = score.reindex(index=all_dates, columns=elig.columns)
         rows = []
         for dt in dates:
             if cfg.regime_filter and not bool(regime.get(dt, False)):
                 continue
-            e = elig.loc[dt] & hit.loc[dt].notna()
+            e = elig.loc[dt] & P["hit"].loc[dt].notna()
             if intraday is not None:
-                e &= pd.Series({t: t in intraday for t in e.index})
+                e &= e.index.to_series().isin(intraday.keys())
             pool = e[e].index
             if len(pool) == 0:
                 continue
-            top = score.loc[dt, pool].sort_values(ascending=False).head(cfg.picks)
-            pool_rate = float(hit.loc[dt, pool].mean())
+            s = score.loc[dt, pool].dropna()
+            if name == "ml":
+                s = s[s >= cfg.min_prob]
+            top = s.sort_values(ascending=False).head(cfg.picks)
+            pool_rate = float(P["hit"].loc[dt, pool].mean())
             for t, sc in top.items():
                 row = {"date": dt, "ticker": t, "score": float(sc), "pool_rate": pool_rate,
-                       "pool_n": len(pool), "hit1": hits[1].loc[dt, t], "hit2": hits[2].loc[dt, t],
-                       "hit3": hits[3].loc[dt, t], "hit": hit.loc[dt, t], "pnl": pnl.loc[dt, t],
-                       "gap": gap.loc[dt, t]}
+                       "pool_n": len(pool), "hit1": P["hit1"].loc[dt, t], "hit2": P["hit2"].loc[dt, t],
+                       "hit3": P["hit3"].loc[dt, t], "hit": P["hit"].loc[dt, t],
+                       "pnl": P["pnl"].loc[dt, t], "gap": P["gap_entry"].loc[dt, t],
+                       "stopped": P["stopped"].loc[dt, t]}
                 if intraday is not None:
-                    tgt = float(ph.loc[dt, t]) * (1 + cfg.margin)
-                    pos = elig.index.get_loc(dt)
-                    window = list(elig.index[pos + 1: pos + 1 + cfg.days])
+                    pos = all_dates.get_loc(dt)
+                    window = list(all_dates[pos + 1: pos + 1 + cfg.days])
                     if len(window) < cfg.days:
                         continue
-                    io = intraday_outcome(intraday[t], window, tgt, peak_hours[t])
+                    tgt = float(P["prior_high"].loc[dt, t]) * (1 + cfg.margin)
+                    io = intraday_outcome(intraday[t], window, tgt, peak_hours[t], cfg.cost)
                     if io is None:
                         continue
-                    row.update(hit=io["hit"], pnl=io["pnl"])
+                    row.update(hit=io["hit"], pnl=io["pnl"], gap=io["gap"], stopped=np.nan)
                 rows.append(row)
         results[name] = pd.DataFrame(rows)
-    return {"results": results, "score_frames": S, "peak_hours": peak_hours}
+    return results
+
+
+def wilson(k: float, n: int, z: float = 1.96):
+    if n == 0:
+        return (np.nan, np.nan)
+    p = k / n
+    den = 1 + z * z / n
+    c = (p + z * z / (2 * n)) / den
+    h = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / den
+    return (c - h, c + h)
 
 
 def summarize(results: Dict[str, pd.DataFrame], cfg: TestConfig) -> pd.DataFrame:
     rows = []
     for name, r in results.items():
         if r.empty:
-            rows.append({"전략": name, "픽수": 0}); continue
+            rows.append({"전략": name, "픽수": 0})
+            continue
+        n = len(r)
+        k = r["hit"].sum()
+        p, p0 = k / n, r["pool_rate"].mean()
+        lo, hi = wilson(k, n)
+        z = (p - p0) / math.sqrt(max(p0 * (1 - p0), 1e-9) / n)
+        pval = 0.5 * math.erfc(z / math.sqrt(2))
+        t = r["pnl"].dropna()
+        gains, losses = t[t > 0].sum(), -t[t < 0].sum()
         rows.append({
-            "전략": name, "매매일": r["date"].nunique(), "픽수": len(r),
-            "1일돌파%": round(r["hit1"].mean() * 100, 1),
-            "2일돌파%": round(r["hit2"].mean() * 100, 1),
-            "3일돌파%": round(r["hit3"].mean() * 100, 1),
-            f"{cfg.days}일돌파%(판정)": round(r["hit"].mean() * 100, 1),
-            "무작위기준%": round(r["pool_rate"].mean() * 100, 1),
-            "초과%p": round((r["hit"].mean() - r["pool_rate"].mean()) * 100, 1),
-            "하루3개중≥2돌파%": round((r.groupby("date")["hit"].sum() >= 2).mean() * 100, 1),
-            "평균수익%": round(r["pnl"].mean() * 100, 2),
-            "승률%": round((r["pnl"] > 0).mean() * 100, 1),
-            "갭진입%": round(r["gap"].mean() * 100, 1),
+            "전략": name, "매매일": r["date"].nunique(), "픽수": n,
+            "2일%": round(r["hit2"].mean() * 100, 1), "3일%": round(r["hit3"].mean() * 100, 1),
+            "판정%": round(p * 100, 1), "95%구간": f"{lo*100:.0f}~{hi*100:.0f}",
+            "기준%": round(p0 * 100, 1), "초과%p": round((p - p0) * 100, 1),
+            "p값": f"{pval:.3f}" if pval >= 0.001 else "<0.001",
+            "≥2/3일%": round((r.groupby("date")["hit"].sum() >= 2).mean() * 100, 1),
+            "평균손익%": round(t.mean() * 100, 2) if len(t) else np.nan,
+            "승률%": round((t > 0).mean() * 100, 1) if len(t) else np.nan,
+            "손익비PF": round(gains / losses, 2) if losses > 0 else np.nan,
+            "손절%": round(r["stopped"].mean() * 100, 1) if r["stopped"].notna().any() else np.nan,
+            "갭%": round(r["gap"].mean() * 100, 1),
         })
     return pd.DataFrame(rows)
 
 
-def today_picks(frames, cfg: TestConfig, strategy: str, names: Dict[str, str]) -> pd.DataFrame:
-    S = build_scores(frames, cfg)
-    score = strategy_score(S["comp"], STRATEGIES[strategy])
-    dt = S["eligible"].index[-1]
-    e = S["eligible"].loc[dt]
-    pool = e[e].index
-    top = score.loc[dt, pool].sort_values(ascending=False).head(cfg.picks)
+def indicator_report(ev: pd.DataFrame) -> pd.DataFrame:
+    """지표별 돌파 예측력: 순위상관(IC)과 상위/하위 20% 돌파율 차이 (전 기간, 설명용)."""
+    lab = ev.dropna(subset=["hit"])
+    base = lab["hit"].mean()
+    rows = []
+    for c in ml_feature_cols(ev):
+        x = lab[c]
+        m = x.notna()
+        if m.sum() < 200 or x[m].nunique() < 3:
+            continue
+        ic = x[m].rank().corr(lab.loc[m, "hit"])
+        q = x[m].rank(pct=True)
+        top, bot = lab.loc[m, "hit"][q > 0.8].mean(), lab.loc[m, "hit"][q <= 0.2].mean()
+        rows.append({"지표": FEATURE_KO.get(c, c), "코드": c, "IC": round(ic, 3),
+                     "상위20%돌파%": round(top * 100, 1), "하위20%돌파%": round(bot * 100, 1),
+                     "차이%p": round((top - bot) * 100, 1)})
+    out = pd.DataFrame(rows)
+    out.attrs["base"] = base
+    return out.sort_values("IC", key=lambda s: -s.abs()) if not out.empty else out
+
+
+# --------------------------------------------------------------------------- #
+# 오늘 픽 / 저널
+# --------------------------------------------------------------------------- #
+def today_picks(ctx, ev, frames, cfg, strategy, names) -> pd.DataFrame:
+    elig = ctx["eligible"]
+    dt = elig.index[-1]
+    pool = elig.loc[dt][elig.loc[dt]].index
+    if len(pool) == 0:
+        return pd.DataFrame()
+    feats = ml_feature_cols(ev)
+    lab = ev.dropna(subset=["hit"])
+    prob = pd.Series(np.nan, index=pool)
+    if len(lab) >= 300:
+        w = fit_logit(lab[feats].fillna(0.5).values, lab["hit"].values)
+        cur = ev.xs(dt, level="date").reindex(pool)
+        prob = pd.Series(predict_logit(w, cur[feats].fillna(0.5).values), index=pool)
+    if strategy == "ml":
+        top = prob[prob >= cfg.min_prob].sort_values(ascending=False).head(cfg.picks)
+    else:
+        score = strategy_score(ctx["comp"], STRATEGIES[strategy])
+        top = score.loc[dt, pool].sort_values(ascending=False).head(cfg.picks)
     out = []
     for t, sc in top.items():
         f = frames[t].loc[dt]
-        out.append({"date": dt.date(), "ticker": t, "name": names.get(t, t), "score": round(sc, 3),
+        out.append({"date": dt.date(), "ticker": t, "name": names.get(t, t), "strategy": strategy,
+                    "score": round(float(sc), 3), "ml_prob": round(float(prob.get(t, np.nan)), 3),
                     "close": round(f["Close"], 2), "prior_high": round(f["prior_high"], 2),
-                    "dist%": round(f["dist"] * 100, 2), "themes": "/".join(TICKER_THEMES.get(t, [])),
-                    "trend": round(f["trend"], 2), "ud_ratio": round(f["ud_ratio"], 2),
-                    "cmf": round(f["cmf"], 3), "pocket_pivots": int(f["pocket_pivots"]),
-                    "market_ok": bool(S["regime_ok"].loc[dt])})
+                    "dist%": round(f["dist"] * 100, 2),
+                    "stop": round(f["Close"] - cfg.stop_atr * f["atr14"], 2) if cfg.stop_atr > 0 else np.nan,
+                    "themes": "/".join(TICKER_THEMES.get(t, [])),
+                    "supply%": round(f["overhead_supply"] * 100, 1) if pd.notna(f["overhead_supply"]) else np.nan,
+                    "squeeze": round(f["squeeze_days"], 1), "cmf": round(f["cmf"], 3),
+                    "market_ok": bool(ctx["regime_ok"].loc[dt])})
     return pd.DataFrame(out)
 
 
 def update_journal(path: str, picks: pd.DataFrame, frames, cfg: TestConfig) -> pd.DataFrame:
-    """저널에 오늘 픽 추가, 결과가 나온 과거 픽은 채점."""
     j = pd.read_csv(path, parse_dates=["date"]) if os.path.exists(path) else pd.DataFrame()
     new = picks.copy()
     new["date"] = pd.to_datetime(new["date"])
@@ -388,23 +460,21 @@ def update_journal(path: str, picks: pd.DataFrame, frames, cfg: TestConfig) -> p
             j[col] = np.nan
     j["result"] = j["result"].astype(object)
     for i, r in j.iterrows():
-        if isinstance(r["result"], str) and r["result"] in ("HIT", "MISS"):
+        if r["result"] in ("HIT", "MISS"):
             continue
         f = frames.get(r["ticker"])
         if f is None:
             continue
         after = f[f.index > r["date"]].head(cfg.days)
         if after.empty:
-            j.at[i, "result"] = "PENDING"; continue
+            j.at[i, "result"] = "PENDING"
+            continue
         j.at[i, "entry_open"] = round(float(after["Open"].iloc[0]), 2)
         j.at[i, "max_high"] = round(float(after["High"].max()), 2)
-        target = r["prior_high"] * (1 + cfg.margin)
-        if after["High"].max() > target:
+        if after["High"].max() > r["prior_high"] * (1 + cfg.margin):
             j.at[i, "result"] = "HIT"
-        elif len(after) >= cfg.days:
-            j.at[i, "result"] = "MISS"
         else:
-            j.at[i, "result"] = "PENDING"
+            j.at[i, "result"] = "MISS" if len(after) >= cfg.days else "PENDING"
     j.to_csv(path, index=False, encoding="utf-8-sig")
     return j
 
@@ -414,22 +484,29 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="날마다 3종목 2~3일 전고점 돌파 테스트")
     ap.add_argument("--market", choices=["kr", "us"], default="kr")
     ap.add_argument("--tickers", nargs="*")
-    ap.add_argument("--csv-dir")
+    ap.add_argument("--csv-dir", help="오프라인 일봉 CSV 디렉터리")
     ap.add_argument("--period", default="5y")
-    ap.add_argument("--strategy", choices=list(STRATEGIES) + ["all"], default="all")
+    ap.add_argument("--strategy", choices=list(STRATEGIES) + ["ml", "all"], default="all")
     ap.add_argument("--days", type=int, default=3, help="돌파 판정 거래일 (2 또는 3)")
     ap.add_argument("--picks", type=int, default=3)
     ap.add_argument("--near", type=float, default=0.05)
     ap.add_argument("--margin", type=float, default=0.0)
+    ap.add_argument("--cost", type=float, default=0.0025, help="왕복 비용 (기본 0.25%%)")
+    ap.add_argument("--stop-atr", type=float, default=1.5, help="ATR 손절 배수, 0=손절 없음")
+    ap.add_argument("--take-profit", type=float, default=0.0,
+                    help="익절: 전고점 대비 +비율에서 매도 (예 0.03). 0=전고점 도달 즉시")
+    ap.add_argument("--min-prob", type=float, default=0.60, help="ml 전략 최소 확률")
     ap.add_argument("--no-regime", action="store_true", help="시장 추세 필터 끄기")
+    ap.add_argument("--flows", action="store_true", help="KRX 외국인·기관 수급/공매도 받아서 사용")
+    ap.add_argument("--flows-dir", default=os.path.join(HERE, "flows_cache"), help="수급 CSV 캐시 폴더")
     ap.add_argument("--intraday", action="store_true", help="60분봉 거래량 최대 시간대로 매매시각 고정")
     ap.add_argument("--intraday-csv-dir", help="오프라인 60분봉 CSV (Datetime,Open,High,Low,Close,Volume)")
     ap.add_argument("--journal", help="오늘 픽 기록/과거 픽 채점할 CSV 경로")
-    ap.add_argument("--log", default="daily_top3_log.csv", help="백테스트 일별 픽 로그 저장 경로")
+    ap.add_argument("--log", default="daily_top3_log.csv", help="최고 전략의 일별 픽 로그")
     a = ap.parse_args()
 
-    cfg = TestConfig(near=a.near, days=a.days, picks=a.picks, margin=a.margin,
-                     regime_filter=not a.no_regime)
+    cfg = TestConfig(near=a.near, days=a.days, picks=a.picks, margin=a.margin, cost=a.cost,
+                     stop_atr=a.stop_atr, min_prob=a.min_prob, take_profit=a.take_profit, regime_filter=not a.no_regime)
     names = dict(KR_UNIVERSE if a.market == "kr" else US_UNIVERSE)
     if a.tickers:
         names = {t: names.get(t, t) for t in a.tickers}
@@ -441,7 +518,19 @@ def main() -> None:
         data = load_from_yfinance(list(names), a.period)
     if not data:
         sys.exit("데이터를 불러오지 못했습니다.")
-    frames = {t: indicators(df, cfg) for t, df in data.items()}
+
+    if a.flows and not a.csv_dir:
+        first = min(df.index[0] for df in data.values()).strftime("%Y%m%d")
+        last = max(df.index[-1] for df in data.values()).strftime("%Y%m%d")
+        print("KRX 수급 데이터 다운로드 중...", file=sys.stderr)
+        fetch_flows(list(data), first, last, a.flows_dir)
+    flows = load_flows(a.flows_dir) if (a.flows or os.path.isdir(a.flows_dir)) else {}
+
+    mkt = market_index(data)
+    print("지표 계산 중...", file=sys.stderr)
+    frames = {t: compute(df, cfg, market=mkt, flows=flows.get(t)) for t, df in data.items()}
+    ctx = build_context(frames, data, cfg)
+    ev = event_table(ctx)
 
     intraday = None
     if a.intraday or a.intraday_csv_dir:
@@ -449,47 +538,71 @@ def main() -> None:
         if not intraday:
             sys.exit("분봉 데이터를 불러오지 못했습니다.")
 
-    strategies = list(STRATEGIES) if a.strategy == "all" else [a.strategy]
-    bt = backtest(frames, cfg, strategies, intraday)
-    summ = summarize(bt["results"], cfg)
+    if a.strategy == "all":
+        strategies = [s for s in STRATEGIES if s != "flows" or "flow20" in ctx["avail"]] + ["ml"]
+    else:
+        strategies = [a.strategy]
+    results = backtest(ctx, ev, cfg, strategies, intraday)
+    summ = summarize(results, cfg)
 
-    mode = "60분봉 · 거래량 최대 시간대 진입/청산" if intraday else "일봉 · 시가(09:00) 진입 / 종가(15:20) 청산"
-    print("=" * 100)
-    print(f" 날마다 {cfg.picks}종목 · {cfg.days}거래일 내 전고점 돌파 테스트 | {mode} | "
-          f"시장필터 {'ON' if cfg.regime_filter else 'OFF'} | 종목 {len(frames)}개")
-    print("=" * 100)
+    mode = "60분봉·거래량 최대 시간대" if intraday else "일봉·시가 진입/종가 청산"
+    print("=" * 110)
+    print(f" 날마다 {cfg.picks}종목 · {cfg.days}거래일 내 전고점 돌파 | {mode} | 비용 {cfg.cost*100:.2f}% | "
+          f"손절 ATR×{cfg.stop_atr} | 익절 +{cfg.take_profit*100:.0f}% | 시장필터 {'ON' if cfg.regime_filter else 'OFF'} | 종목 {len(frames)} | "
+          f"수급 {'있음' if 'flow20' in ctx['avail'] else '없음'}")
+    print("=" * 110)
     if intraday:
-        hrs = pd.Series(bt["peak_hours"]).value_counts()
+        hrs = pd.Series(ctx["peak_hours"]).value_counts()
         print("종목별 거래량 최대 시간대:", ", ".join(f"{h}시 {n}종목" for h, n in hrs.items()))
-    with pd.option_context("display.width", 200, "display.max_columns", 30):
+    with pd.option_context("display.width", 250, "display.max_columns", 30):
         print(summ.to_string(index=False))
-    best = summ.dropna(subset=["초과%p"]).sort_values(f"{cfg.days}일돌파%(판정)", ascending=False)
-    if not best.empty:
-        b = best.iloc[0]
-        ok = b[f"{cfg.days}일돌파%(판정)"] >= 60
-        print(f"\n최고 전략: {b['전략']}  {cfg.days}일 내 돌파율 {b[f'{cfg.days}일돌파%(판정)']}% "
-              f"(무작위 {b['무작위기준%']}%) → 60% 목표 {'달성' if ok else '미달'}")
-        r = bt["results"][b["전략"]]
+
+    rep = indicator_report(ev)
+    if not rep.empty:
+        print(f"\n[지표별 돌파 예측력]  후보 전체 {cfg.days}일 돌파율 {rep.attrs['base']*100:.1f}%  "
+              f"(IC: 순위상관, +면 높을수록 돌파 잘 됨)")
+        with pd.option_context("display.width", 200):
+            print(rep.head(15).drop(columns=["코드"]).to_string(index=False))
+        rep.to_csv("indicator_report.csv", index=False, encoding="utf-8-sig")
+        print("  전체 표: indicator_report.csv")
+
+    probs = ctx.get("ml_probs")
+    if probs is not None and probs.notna().any():
+        m = probs.notna() & ev["hit"].notna()
+        pr, y = probs[m], ev.loc[m, "hit"]
+        bins = pd.cut(pr, [0, .4, .5, .6, .7, .8, 1.0])
+        cal = y.groupby(bins, observed=True).agg(["mean", "count"])
+        print("\n[ML 확률 캘리브레이션 · 표본 외] " + ", ".join(
+            f"{iv}: 실제 {r['mean']*100:.0f}% (n={int(r['count'])})" for iv, r in cal.iterrows()))
+
+    ok = summ.dropna(subset=["초과%p"])
+    ok = ok[ok["픽수"] >= 30]
+    best = ok.sort_values("판정%", ascending=False).iloc[0] if not ok.empty else None
+    strat = best["전략"] if best is not None else "combo"
+    if best is not None:
+        print(f"\n최고 전략: {strat}  {cfg.days}일 내 돌파율 {best['판정%']}% (95% {best['95%구간']}, "
+              f"기준 {best['기준%']}%) → 60% 목표 {'달성' if best['판정%'] >= 60 else '미달'}")
+        r = results[strat]
         r.assign(name=r["ticker"].map(lambda t: names.get(t, t))).to_csv(a.log, index=False, encoding="utf-8-sig")
         print(f"일별 픽 로그: {a.log}")
-        print("\n최근 5거래일 픽:")
-        last = r[r["date"].isin(sorted(r["date"].unique())[-5:])]
-        for dt, g in last.groupby("date"):
-            s = "  ".join(f"{names.get(t, t)}({'O' if h == 1 else 'X'})" for t, h in zip(g["ticker"], g["hit"]))
-            print(f"  {dt.date()}  {s}")
+        print("최근 5거래일 픽:")
+        for dt, g in r[r["date"].isin(sorted(r["date"].unique())[-5:])].groupby("date"):
+            print(f"  {dt.date()}  " + "  ".join(
+                f"{names.get(t, t)}({'O' if h == 1 else 'X'})" for t, h in zip(g["ticker"], g["hit"])))
 
-    strat = best.iloc[0]["전략"] if not best.empty else "combo"
-    tp = today_picks(frames, cfg, strat, names)
-    print(f"\n[다음 거래일 관찰 종목 · {strat} 전략]")
-    print(tp.to_string(index=False) if not tp.empty else "  조건 충족 종목 없음")
-    if not tp.empty and not tp["market_ok"].iloc[0] and cfg.regime_filter:
-        print("  ※ 시장 추세 필터 OFF 구간: 백테스트 규칙상 오늘은 매매하지 않는 날입니다.")
+    tp = today_picks(ctx, ev, frames, cfg, strat, names)
+    print(f"\n[다음 거래일 관찰 종목 · {strat}]  시가 매수, 전고점+{cfg.take_profit*100:.0f}% 도달 시 매도, 손절가 이탈 시 매도, "
+          f"{cfg.days}일째 종가 청산")
+    with pd.option_context("display.width", 250, "display.max_columns", 30):
+        print(tp.to_string(index=False) if not tp.empty else "  조건 충족 종목 없음")
+    if not tp.empty and cfg.regime_filter and not tp["market_ok"].iloc[0]:
+        print("  ※ 시장 필터 OFF: 백테스트 규칙상 오늘은 매매하지 않는 날입니다.")
     if a.journal and not tp.empty:
         j = update_journal(a.journal, tp, frames, cfg)
         done = j[j["result"].isin(["HIT", "MISS"])]
-        rate = f"{(done['result'] == 'HIT').mean() * 100:.1f}%" if len(done) else "-"
+        rate = f"{(done['result'] == 'HIT').mean()*100:.1f}%" if len(done) else "-"
         print(f"\n저널 {a.journal}: 누적 {len(j)}건, 채점 {len(done)}건, 실전 돌파율 {rate}")
-    print("\n※ 과거 데이터 백테스트 결과이며 수익을 보장하지 않습니다. 슬리피지·수수료·세금 미반영.")
+    print("\n※ 과거 백테스트이며 수익을 보장하지 않습니다. 상장폐지 종목이 빠진 생존편향이 있습니다.")
 
 
 if __name__ == "__main__":

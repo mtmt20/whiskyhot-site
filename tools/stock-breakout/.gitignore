@@ -4,3 +4,5 @@ __pycache__/
 daily_top3_log.csv
 picks.csv
 daily.log
+indicator_report.csv
+flows_cache/
