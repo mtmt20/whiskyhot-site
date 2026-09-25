@@ -1,0 +1,15 @@
+{
+  "name": "seoul-her-map",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "首尔她地图 · 샤오홍슈 카루셀 노트 생성기",
+  "scripts": {
+    "note": "node scripts/generate-note.mjs",
+    "render": "node scripts/render.mjs",
+    "preview": "node scripts/generate-note.mjs --no-render"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  }
+}

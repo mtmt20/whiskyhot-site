@@ -1,0 +1,25 @@
+<!doctype html><html lang="zh"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600&family=Noto+Sans+SC:wght@400;500&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css"></head>
+<body><div class="card">
+  <div class="ai-label">{{ai_label}}</div>
+  <div style="display:flex; align-items:flex-end; gap:36px">
+    <div class="num">{{order}}</div>
+    <div style="padding-bottom:18px"><div class="eyebrow">{{category_zh}} · {{walk_min}} min from {{station_short}}</div>
+      <div class="h2" style="margin-top:8px">{{name_zh}}</div>
+      <div class="small">{{name_ko}}</div></div>
+  </div>
+  <div style="height:40px"></div>
+  <div class="photo placeholder" style="height:720px; background-image:url('{{image}}')"></div>
+  <div style="height:44px"></div>
+  <div class="h3">{{one_liner_zh}}</div>
+  <div style="height:20px"></div>
+  <div class="body">{{detail_zh}}</div>
+  <div style="height:32px"></div>
+  <div><span class="chip fill">💰 {{price_zh}}</span><span class="chip">🕐 {{hours}}</span></div>
+  <div class="grow"></div>
+  <div class="small">📌 {{tip_zh}}</div>
+  <div style="height:16px"></div>
+  <div class="small" style="opacity:.7">{{address_zh}}</div>
+  <div class="foot"><div class="brand-zh">{{brand_zh}}</div><div class="brand">{{order}} / {{count}}</div></div>
+</div></body></html>

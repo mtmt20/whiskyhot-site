@@ -1,0 +1,34 @@
+/* 首尔她地图 카드 공통 테마. 색 3개 고정: 크림 / 차콜 / 세이지 */
+:root {
+  --cream: #f5f0e8;
+  --cream-2: #ece5d8;
+  --charcoal: #2b2a27;
+  --ink-soft: #6b675f;
+  --sage: #7a8f7b;
+  --sage-soft: #d7dfd6;
+  --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "WenQuanYi Zen Hei", serif;
+  --sans: "Noto Sans SC", "PingFang SC", "WenQuanYi Zen Hei", "Helvetica Neue", sans-serif;
+  --latin: "Cormorant Garamond", "Times New Roman", serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1242px; height: 1656px; }           /* 3:4, 샤오홍슈 권장 */
+body { background: var(--cream); color: var(--charcoal); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+.card { position: relative; width: 1242px; height: 1656px; padding: 96px 96px 170px; overflow: hidden; display: flex; flex-direction: column; }
+.eyebrow { font-family: var(--latin); font-size: 30px; letter-spacing: .28em; text-transform: uppercase; color: var(--sage); }
+.h1 { font-family: var(--serif); font-weight: 600; font-size: 108px; line-height: 1.18; letter-spacing: .01em; }
+.h2 { font-family: var(--serif); font-weight: 600; font-size: 72px; line-height: 1.22; }
+.h3 { font-family: var(--serif); font-weight: 500; font-size: 44px; line-height: 1.3; }
+.body { font-size: 34px; line-height: 1.7; color: var(--ink-soft); }
+.small { font-size: 26px; line-height: 1.6; color: var(--ink-soft); }
+.num { font-family: var(--latin); font-size: 150px; line-height: 1; color: var(--sage); }
+.rule { height: 2px; background: var(--charcoal); opacity: .15; }
+.photo { width: 100%; border-radius: 6px; background: var(--sage-soft) center/cover no-repeat; overflow: hidden; }
+.photo.placeholder::after { content: "PHOTO"; display: flex; height: 100%; align-items: center; justify-content: center; font-family: var(--latin); letter-spacing: .4em; color: var(--sage); font-size: 32px; }
+.chip { display: inline-block; padding: 10px 22px; border: 2px solid var(--charcoal); border-radius: 999px; font-size: 26px; margin-right: 12px; }
+.chip.fill { background: var(--charcoal); color: var(--cream); }
+.foot { position: absolute; left: 96px; right: 96px; bottom: 72px; display: flex; justify-content: space-between; align-items: flex-end; }
+.brand { font-family: var(--latin); font-size: 30px; letter-spacing: .22em; }
+.brand-zh { font-family: var(--serif); font-size: 30px; letter-spacing: .3em; }
+.mascot { position: absolute; right: 96px; bottom: 60px; width: 150px; opacity: .9; }
+.ai-label { position: absolute; right: 96px; top: 72px; font-size: 22px; color: var(--ink-soft); letter-spacing: .1em; }
+.grow { flex: 1; }
