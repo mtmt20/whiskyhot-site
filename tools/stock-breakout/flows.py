@@ -4,8 +4,9 @@ pykrx로 KRX 데이터를 받아 CSV로 캐시한다. 최신 pykrx는 KRX 로그
 환경변수 KRX_ID, KRX_PW를 설정해야 한다 (data.krx.co.kr 무료 회원).
 
 캐시 CSV 형식 (flows_dir/<티커>.csv):
-  Date, foreign, institution, short_ratio
-  foreign/institution: 순매수 금액(원), short_ratio: 공매도 잔고 비중(%)
+  Date, foreign, institution, pension, trust, private_eq, fin_invest, other_corp, individual, short_ratio
+  금액 열은 순매수 금액(원), short_ratio는 공매도 잔고 비중(%)
+  pension=연기금, trust=투신, private_eq=사모, fin_invest=금융투자, other_corp=기타법인
 """
 from __future__ import annotations
 
@@ -33,10 +34,16 @@ def fetch_flows(tickers: List[str], start: str, end: str, cache_dir: str) -> Non
         if not t.endswith((".KS", ".KQ")):
             continue
         try:
-            tv = stock.get_market_trading_value_by_date(s, e, _code(t))
+            tv = stock.get_market_trading_value_by_date(s, e, _code(t), detail=True)
             out = pd.DataFrame(index=tv.index)
-            out["foreign"] = tv.get("외국인합계", tv.get("외국인"))
-            out["institution"] = tv.get("기관합계")
+            out["foreign"] = tv.get("외국인", 0) + tv.get("기타외국인", 0)
+            inst_cols = [c for c in ("금융투자", "보험", "투신", "사모", "은행", "기타금융", "연기금")
+                         if c in tv]
+            out["institution"] = tv[inst_cols].sum(axis=1) if inst_cols else tv.get("기관합계")
+            for src, dst in (("연기금", "pension"), ("투신", "trust"), ("사모", "private_eq"),
+                             ("금융투자", "fin_invest"), ("기타법인", "other_corp"), ("개인", "individual")):
+                if src in tv:
+                    out[dst] = tv[src]
             try:
                 sb = stock.get_shorting_balance_by_date(s, e, _code(t))
                 out["short_ratio"] = sb.get("비중").reindex(out.index)

@@ -6,3 +6,5 @@ picks.csv
 daily.log
 indicator_report.csv
 flows_cache/
+ohlcv_cache/
+accumulation_reports/
