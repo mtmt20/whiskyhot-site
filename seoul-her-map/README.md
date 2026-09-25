@@ -13,8 +13,8 @@ npm run note -- --area magok --category spot
 ```
 
 옵션
-- `--area magok|seongsu|dosan|yeonnam|hannam`  동네 (data/areas.csv)
-- `--category cafe|restaurant|bakery|beauty|shop|spot`  카테고리 (data/categories.csv)
+- `--area magok|seongsu|yeonnam|hongdae|dosan|hannam`  동네 (data/areas.csv)
+- `--category cafe|restaurant|bakery|beauty|shop|spot|mix`  카테고리. `mix`는 동네 전체를 한 노트로(제목은 好去处)
 - `--slugs a,b,c`  장소를 직접 골라 그 순서로
 - `--signature 本地闺蜜私藏`  제목 앞머리 시그니처 바꾸기
 - `--no-render`  PNG 생략, cards/*.html 만 생성 (브라우저로 열어 미리보기)
@@ -22,6 +22,8 @@ npm run note -- --area magok --category spot
 영상 노트로 만들 때: `scripts/tts.sh out/<note>` 로 narration.mp3 를 만들고, 剪映(CapCut 중국판)에 cards/*.png 를 3초씩 올려 합친다.
 
 ## 데이터
+
+현재 검증된 장소: 마곡 2, 성수 6, 연남 4, 홍대 4 (2026-09-25 웹 확인). 누데이크 성수 본점은 폐업했고 하우스 노웨어 5층 티하우스로 넣었다.
 
 | 파일 | 역할 |
 |---|---|
@@ -36,7 +38,9 @@ places.csv 열 설명
 - `tip_zh` 시간대·주문·웨이팅 회피 팁. 저장률을 올리는 칸
 - `avoid_zh` 避雷 한 줄. 비우면 카드에서 사라짐
 - `vibe`,`photo`,`quiet` 1~5 점수. `vibe_tag_zh` 사진 위 스티커 문구
+- `station_zh` 장소별 지하철역(비우면 동네 기본역). 서울숲처럼 다른 역이 가까울 때
 - `walk_min_from_station` 역에서 도보 분. 동선 카드 합계에 씀
+- `source_url`, `verified_on` 검증 출처와 날짜. 영업시간·주소는 이 출처 기준이며 발행 전 네이버지도로 한 번 더 확인
 - `order` 동선 순서
 - `image` images/ 안의 파일명
 

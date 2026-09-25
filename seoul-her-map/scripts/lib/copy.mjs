@@ -16,7 +16,7 @@ export function makeBody({ area, category, places, keywords }) {
     [`${i + 1}️⃣ ${pl.name_zh}｜${pl.name_ko}`,
      `「${pl.one_liner_zh}」`,
      pl.detail_zh,
-     `人均 ${pl.price_zh}｜${pl.hours}｜${area.station_zh.split("(")[0]} 步行${pl.walk_min_from_station}分钟`,
+     `${/^(人均|约|免费|\d)/.test(pl.price_zh) ? "" : "人均 "}${pl.price_zh}｜${pl.hours}｜${(pl.station_zh || area.station_zh).split("(")[0]} 步行${pl.walk_min_from_station}分钟`,
      pl.tip_zh ? `📌 ${pl.tip_zh}` : "",
      pl.avoid_zh ? `⚠️ 避雷：${pl.avoid_zh}` : ""].filter(Boolean).join("\n"));
   const outro = `最后一张是动线图，收藏起来到了直接用。\n想看${area.area_zh}的哪一类店，评论区告诉我，下一期就写。`;

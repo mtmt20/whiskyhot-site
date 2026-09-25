@@ -26,13 +26,13 @@ let places = all.filter(x => x.area === area.area && !x.slug.startsWith("sample-
 if (args.slugs) {
   const order = String(args.slugs).split(",");
   places = order.map(s => all.find(x => x.slug === s)).filter(Boolean);
-} else if (args.category) {
+} else if (args.category && args.category !== "mix") {
   places = places.filter(x => x.category === args.category);
 }
 places.sort((a, b) => (+a.order || 99) - (+b.order || 99));
 if (!places.length) throw new Error("no places matched. data/places.csv 를 확인하세요 (sample- 접두어 행은 제외됨)");
 
-const catKey = args.category || places[0].category;
+const catKey = args.category || (new Set(places.map(x => x.category)).size > 1 ? "mix" : places[0].category);
 const category = cats.find(c => c.category === catKey) || cats[0];
 const signature = args.signature || keywords.find(k => k.tier === "signature").keyword_zh;
 const count = places.length;
@@ -63,7 +63,7 @@ write(1, "cover", render(T("cover.html"), { ...common, signature: esc(signature)
 
 places.forEach((pl, i) => write(i + 2, pl.slug, render(T("place.html"), { ...common, ...Object.fromEntries(Object.entries(pl).map(([k, v]) => [k, esc(v)])),
   order: i + 1, category_zh: (cats.find(c => c.category === pl.category) || category).category_zh,
-  walk_min: pl.walk_min_from_station || "?", station_short: area.station_zh.split("(")[0], image: img(pl.image),
+  walk_min: pl.walk_min_from_station || "?", station_short: (pl.station_zh || area.station_zh).split("(")[0], image: img(pl.image),
   vibe_sticker: esc(pl.vibe_tag_zh || "本地人认证"), dots_vibe: dots(pl.vibe), dots_photo: dots(pl.photo), dots_quiet: dots(pl.quiet),
   avoid_display: pl.avoid_zh ? "block" : "none", price_zh: esc((pl.price_zh || "").replace(/^人均\s*/, "")) })));
 
