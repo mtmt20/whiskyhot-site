@@ -139,6 +139,7 @@ python daily_top3_test.py --journal picks.csv          # 오늘 3종목 기록 +
 | 내부자 매수 | 임원·주요주주 소유보고 증감 (DART 오픈API 키 또는 `--insider-csv`) |
 
 이 흔적들을 합쳐 0~100점 **매집점수**를 냅니다. 털기형 급증이 많으면 감점합니다.
+`--asof 날짜`를 주면 그 날짜까지만 보고 분석하고, **직전 60일과 그 이전 1년**의 거래량·수급을 나란히 비교합니다.
 
 ## 실행
 
@@ -148,6 +149,9 @@ python accumulation.py 294630 026960 --insider-csv insider_seed.csv
 
 # KRX 수급과 DART 내부자 보고까지 포함 (둘 다 무료 가입)
 KRX_ID=아이디 KRX_PW=비번 DART_API_KEY=키 python accumulation.py 294630 026960 --flows
+
+# 이벤트 직전 매집 확인: 서남 초전도체 급등(2023-07-22 논문 공개) 전날까지만 보고 분석
+KRX_ID=아이디 KRX_PW=비번 python accumulation.py 294630 --asof 2023-07-21 --years 3 --flows
 
 # 전 종목 스캔: 일평균 거래대금 1~50억 종목 중 최근 1년 매집점수 순위
 python accumulation.py --scan-all --min-value 1 --max-value 50

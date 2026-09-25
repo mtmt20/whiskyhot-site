@@ -49,12 +49,16 @@ INVESTORS = [("foreign", "외국인"), ("institution", "기관계"), ("pension",
 # --------------------------------------------------------------------------- #
 # 데이터
 # --------------------------------------------------------------------------- #
-def load_daily(code: str, start: str, end: str, cache_dir: str) -> Optional[pd.DataFrame]:
-    """pykrx → yfinance(.KS/.KQ) 순서로 시도, 결과는 cache_dir/<code>.csv 로 캐시."""
+def load_daily(code: str, start: str, end: str, cache_dir: str,
+               offline: bool = False) -> Optional[pd.DataFrame]:
+    """pykrx → yfinance(.KS/.KQ) 순서로 시도, 결과는 cache_dir/<code>.csv 로 캐시.
+    offline=True면 cache_dir의 CSV만 그대로 쓴다."""
     os.makedirs(cache_dir, exist_ok=True)
     path = os.path.join(cache_dir, f"{code}.csv")
     if os.path.exists(path):
         df = pd.read_csv(path, parse_dates=["Date"]).set_index("Date")
+        if offline:
+            return df
         if df.index[0] <= pd.Timestamp(start) + timedelta(days=10) and \
                 df.index[-1] >= pd.Timestamp(end) - timedelta(days=4):
             return df
@@ -79,7 +83,7 @@ def load_daily(code: str, start: str, end: str, cache_dir: str) -> Optional[pd.D
                     break
         except Exception as ex:
             print(f"[yfinance 실패] {code}: {type(ex).__name__}", file=sys.stderr)
-    if df is None or df.empty:
+    if offline or df is None or df.empty:
         return None
     df = df[(df["Volume"] > 0) & (df["Close"] > 0)].copy()   # 거래정지일 제거
     df.index.name = "Date"
@@ -279,7 +283,10 @@ def analyze(code: str, df: pd.DataFrame, fl, ins, years: int) -> dict:
         yearly.append(s)
     last = window_signals(d.iloc[-250:], fl, ins)
     full = window_signals(d, fl, ins)
-    return {"code": code, "d": d, "yearly": yearly, "last": last, "full": full, "years": years}
+    base = d.iloc[-310:-60] if len(d) >= 310 else None        # 직전 60일 이전 1년 (비교 기준)
+    recent = window_signals(d.iloc[-60:], fl, ins)
+    return {"code": code, "d": d, "yearly": yearly, "last": last, "full": full, "years": years,
+            "recent60": recent, "base": window_signals(base, fl, ins) if base is not None else None}
 
 
 # --------------------------------------------------------------------------- #
@@ -316,6 +323,15 @@ def print_report(name: str, res: dict) -> None:
         if "내부자 순증주식" in s:
             print(f"  내부자 보고: 증가 {s['내부자 증가보고']}건, 감소 {s['내부자 감소보고']}건, "
                   f"순증 {s['내부자 순증주식']:+,.0f}주")
+    r60, b = res["recent60"], res["base"]
+    if b is not None:
+        keys = ["일평균거래대금(억)", "상승/하락거래량비", "하락일/상승일 평균거래량", "OBV순증%", "AD순증%",
+                "종가 상단마감%", "거래량급증", "흡수형"]
+        keys += [k for k in r60 if k.endswith("순매수(억)")]
+        print(f"\n[직전 60일 vs 그 이전 1년]  매집점수 {r60['매집점수']} vs {b['매집점수']}")
+        for k in keys:
+            if k in b:
+                print(f"  {k:<18} {r60[k]:>10,.2f}   |   {b[k]:>10,.2f}")
     top = d[d["spike"]].tail(8)
     if not top.empty:
         print("\n  최근 거래량 급증일: " + ", ".join(
@@ -375,10 +391,10 @@ def save_chart(name: str, res: dict, fl, ins, path: str) -> None:
 
 # --------------------------------------------------------------------------- #
 def scan(codes: List[str], start: str, end: str, cache: str, flows: Dict[str, pd.DataFrame],
-         min_value: float, max_value: float) -> pd.DataFrame:
+         min_value: float, max_value: float, offline: bool = False) -> pd.DataFrame:
     rows = []
     for i, code in enumerate(codes):
-        df = load_daily(code, start, end, cache)
+        df = load_daily(code, start, end, cache, offline)
         if df is None or len(df) < 300:
             continue
         d = compute_series(df).iloc[-250:]
@@ -401,6 +417,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="장기 매집 흔적 분석")
     ap.add_argument("codes", nargs="*", help="6자리 종목코드 (예: 294630 026960)")
     ap.add_argument("--years", type=int, default=5)
+    ap.add_argument("--asof", help="이 날짜까지만 보고 분석 (예: 2023-07-21, 이벤트 직전 매집 확인용)")
     ap.add_argument("--csv-dir", help="오프라인 일봉 CSV 폴더 (<코드>.csv)")
     ap.add_argument("--cache-dir", default=os.path.join(HERE, "ohlcv_cache"))
     ap.add_argument("--flows", action="store_true", help="KRX 투자자별 수급 받기 (KRX_ID/KRX_PW 필요)")
@@ -414,8 +431,9 @@ def main() -> None:
     ap.add_argument("--max-value", type=float, default=50.0, help="스캔: 일평균 거래대금 상한(억)")
     a = ap.parse_args()
 
-    end = datetime.now().strftime("%Y-%m-%d")
-    start = (datetime.now() - timedelta(days=365 * a.years + 120)).strftime("%Y-%m-%d")
+    end_dt = pd.Timestamp(a.asof) if a.asof else pd.Timestamp(datetime.now().date())
+    end = end_dt.strftime("%Y-%m-%d")
+    start = (end_dt - timedelta(days=365 * a.years + 120)).strftime("%Y-%m-%d")
     cache = a.csv_dir or a.cache_dir
     os.makedirs(a.out_dir, exist_ok=True)
 
@@ -428,7 +446,7 @@ def main() -> None:
             codes = stock.get_market_ticker_list(today, "KOSPI") + stock.get_market_ticker_list(today, "KOSDAQ")
         flows = load_flows(a.flows_dir)
         print(f"{len(codes)}개 종목 스캔 (거래대금 {a.min_value}~{a.max_value}억)...", file=sys.stderr)
-        res = scan(codes, start, end, cache, flows, a.min_value, a.max_value)
+        res = scan(codes, start, end, cache, flows, a.min_value, a.max_value, bool(a.csv_dir))
         out = os.path.join(a.out_dir, "scan_result.csv")
         res.to_csv(out, index=False, encoding="utf-8-sig")
         with pd.option_context("display.width", 220, "display.max_columns", 20):
@@ -442,10 +460,12 @@ def main() -> None:
         fetch_flows([krx_ticker(c) for c in a.codes], start, end, a.flows_dir)
     flows = load_flows(a.flows_dir)
     for code in a.codes:
-        df = load_daily(code, start, end, cache)
+        df = load_daily(code, start, end, cache, bool(a.csv_dir))
         if df is None:
             print(f"{code}: 데이터를 불러오지 못했습니다.", file=sys.stderr)
             continue
+        if a.asof:
+            df = df[df.index <= end_dt]
         fl = flows.get(code + ".KS", flows.get(code + ".KQ", flows.get(code)))
         ins = None
         if a.insider_csv:
