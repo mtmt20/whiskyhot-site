@@ -19,11 +19,14 @@ npm run note -- --area magok --category spot
 - `--signature 本地闺蜜私藏`  제목 앞머리 시그니처 바꾸기
 - `--no-render`  PNG 생략, cards/*.html 만 생성 (브라우저로 열어 미리보기)
 
-영상 노트로 만들 때: `scripts/tts.sh out/<note>` 로 narration.mp3 를 만들고, 剪映(CapCut 중국판)에 cards/*.png 를 3초씩 올려 합친다.
+실용 정보 노트(교통·퇴세·예약): `node scripts/generate-info.mjs --slug gimpo-arrival` (data/info.csv 에 정의, 커버+스텝+아웃트로 3장).
+
+영상 노트로 만들 때: `scripts/tts.sh out/<note>` 로 narration.mp3 를 만들고 `scripts/video.sh out/<note>` 로 note.mp4 를 합친다.
+video.sh 는 시스템 ffmpeg(libx264·png)가 필요하다. 맥은 `brew install ffmpeg`. 이 저장소를 만든 클라우드 환경에는 그 ffmpeg 가 없어 mp4 합성만 미검증이며, 나머지는 실제 렌더로 확인했다. 剪映에 PNG 를 직접 올려도 된다.
 
 ## 데이터
 
-현재 검증된 장소: 마곡 2, 성수 6, 연남 4, 홍대 4 (2026-09-25 웹 확인). 누데이크 성수 본점은 폐업했고 하우스 노웨어 5층 티하우스로 넣었다.
+현재 검증된 장소: 마곡 2, 성수 6, 연남 4, 홍대 4, 도산 3, 한남 2 (2026-09-25 웹 확인). 누데이크 성수 본점은 폐업했고 하우스 노웨어 5층 티하우스로 넣었다.
 
 | 파일 | 역할 |
 |---|---|
@@ -31,6 +34,10 @@ npm run note -- --area magok --category spot
 | data/areas.csv | 동네별 중국어 이름, 훅 문장, 지하철역, 롱테일 태그 |
 | data/keywords.csv | 큰 키워드 / 시그니처 / 롱테일 3층 |
 | data/categories.csv | 카테고리 중국어 이름과 단위(家/处) |
+| data/info.csv | 실용 정보 노트(스텝형) |
+| data/calendar.csv | 첫 12개 노트 발행 순서와 명령 |
+| docs/STRATEGY.md · ACCOUNT.md · PITCH.md | 운영 전략, 프로필·合集·私信 문구, 협찬 제안서 |
+| images/mascot.svg · mascot.png | 뒷모습 단발 캐릭터(얼굴 없음). 커버 오른쪽 아래와 프로필용 |
 
 places.csv 열 설명
 - `one_liner_zh` 한 줄 훅(12자 내외). 카드 제목과 동선 카드에 들어감

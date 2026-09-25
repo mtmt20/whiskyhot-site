@@ -1,0 +1,13 @@
+day,date_offset,type,command,area_or_slug,collection,note
+1,0,info,generate-info,gimpo-arrival,首尔实用帖,첫 노트. 검색 유입용
+2,1,area,generate-note --category mix,seongsu,圣水半日,성수 6곳 攻略
+3,2,area,generate-note --category mix,magok,落地第一站｜麻谷,마곡 (사용자 장소 추가 후)
+4,3,info,generate-info,reservation-apps,首尔实用帖,예약·排队 App
+5,4,area,generate-note --category mix,yeonnam,延南慢走,연남 4곳
+6,5,single,generate-note --slugs onion-seongsu,seongsu,圣水半日,探店 샘플 1 (협찬 제안용)
+7,7,area,generate-note --category mix,hongdae,弘大夜,홍대 4곳
+8,8,info,generate-info,tax-refund,首尔实用帖,퇴세
+9,9,area,generate-note --category mix,dosan,岛山变美,도산 3곳 (뷰티 기둥)
+10,10,single,generate-note --slugs cafe-layered-yeonnam,yeonnam,延南慢走,探店 샘플 2
+11,11,area,generate-note --category mix,hannam,汉南周末,한남 2곳 + 추가 검증 후
+12,12,single,generate-note --slugs haus-dosan,dosan,岛山变美,探店 샘플 3 (뷰티 협찬용)

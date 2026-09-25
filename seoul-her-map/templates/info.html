@@ -1,0 +1,22 @@
+<!doctype html><html lang="zh"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600&family=Noto+Sans+SC:wght@400;500&family=Cormorant+Garamond:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+.steps { list-style:none; margin-top:36px }
+.steps li { display:flex; gap:28px; padding:26px 0; border-bottom:2px solid rgba(43,42,39,.12); font-size:32px; line-height:1.6; color:var(--charcoal) }
+.steps .n { flex:none; width:64px; height:64px; border-radius:50%; background:var(--charcoal); color:var(--cream); font-family:var(--latin); font-size:34px; display:flex; align-items:center; justify-content:center; margin-top:4px }
+</style></head>
+<body><div class="card">
+  <div class="ai-label">{{ai_label}}</div>
+  <div class="eyebrow">Seoul · Practical</div>
+  <div class="h2" style="margin-top:20px"><span class="mark">{{title_zh}}</span></div>
+  <div class="hook" style="margin-top:24px; color:var(--ink-soft)">{{hook_zh}}</div>
+  <ol class="steps">{{step_items}}</ol>
+  <div style="height:28px"></div>
+  <div class="strip">📌 {{tip_zh}}</div>
+  <div style="height:14px"></div>
+  <div class="strip warn" style="display:{{avoid_display}}">⚠️ 避雷：{{avoid_zh}}</div>
+  <div class="grow"></div>
+  <div class="small">收藏这张，到了直接照着做。</div>
+  <div class="foot"><div class="brand-zh">{{brand_zh}}</div><div class="brand">{{brand_en}}</div></div>
+</div></body></html>

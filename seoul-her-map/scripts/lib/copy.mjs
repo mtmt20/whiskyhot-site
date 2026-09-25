@@ -42,7 +42,8 @@ export function makeVibeLine(places) {
 
 /** 커버 스티커 문구: 동네 훅에서 두 번째 조각, 없으면 기본 */
 export function makeSticker(area) {
-  return area.hook_zh.split("｜")[1] || "本地人认证";
+  const seg = (area.hook_zh.split("｜")[1] || "").trim();
+  return seg && seg.length <= 6 ? seg : "本地人认证";
 }
 
 /** 人均 대표값: 첫 유료 장소 가격, 없으면 免费 */

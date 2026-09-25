@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
+  <g fill="none" stroke="#2b2a27" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- bob hair, back view -->
+    <path d="M95 120 C 85 60, 215 60, 205 120 L 212 175 C 214 190, 200 196, 190 190 L 180 150 L 120 150 L 110 190 C 100 196, 86 190, 88 175 Z"/>
+    <!-- neck & shoulders -->
+    <path d="M132 190 L 130 210 M168 190 L 170 210"/>
+    <path d="M70 290 C 72 235, 100 208, 150 208 C 200 208, 228 235, 230 290"/>
+    <!-- tote bag strap & bag -->
+    <path d="M178 212 L 198 262"/>
+    <rect x="186" y="252" width="44" height="40" rx="6"/>
+    <!-- coffee cup in left hand -->
+    <path d="M110 214 L 96 262"/>
+    <path d="M78 258 h 34 l -3 30 h -28 z"/>
+    <path d="M112 264 c 12 0 12 14 0 14"/>
+    <!-- hair highlight -->
+    <path d="M115 95 C 130 82, 170 82, 185 95" stroke="#7a8f7b" stroke-width="4"/>
+  </g>
+  <!-- small sage dot: brand mark -->
+  <circle cx="150" cy="80" r="0" fill="#7a8f7b"/>
+</svg>
