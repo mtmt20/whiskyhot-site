@@ -1,3 +1,6 @@
 breakout_candidates.csv
 breakout_candidates.json
 __pycache__/
+daily_top3_log.csv
+picks.csv
+daily.log
