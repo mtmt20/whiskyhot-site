@@ -183,6 +183,41 @@ def spike_regularity(d: pd.DataFrame) -> dict:
             "cv": float(np.std(gaps) / np.mean(gaps))}
 
 
+def cycle_backtest(d: pd.DataFrame, pre: int = 2, cost: float = 0.0025, min_hist: int = 5) -> Optional[dict]:
+    """주기 매수 선취매 테스트. 과거 '매수형 급증일'(거래량 3배 이상 + 종가가 캔들 상단) 간격만으로
+    다음 급증일을 예측하고, 예측일 pre일 전 시가에 사서 허용창 안의 첫 급증일 종가(없으면 창 끝 종가)에 판다.
+    급증 여부는 그날 장 마감에 알 수 있으므로 미래 정보는 쓰지 않는다."""
+    buy_spike = (d["spike"] & (d["clv"] > 0)).values
+    o, c = d["Open"].values, d["Close"].values
+    idx = list(np.where(buy_spike)[0])
+    n = len(d)
+    trades, rand = [], []
+    rng = np.random.default_rng(0)
+    for k in range(min_hist, len(idx)):
+        past = idx[:k]
+        gaps = np.diff(past[-(min_hist + 1):])
+        med = float(np.median(gaps))
+        if med < 3 or np.std(gaps) / np.mean(gaps) > 0.6:     # 불규칙하면 매매 안 함
+            continue
+        pred = past[-1] + int(round(med))
+        tol = max(2, int(round(med * 0.3)))
+        entry = pred - pre
+        last = pred + tol
+        if entry <= past[-1] or last >= n:
+            continue
+        hit = [j for j in idx[k:] if entry <= j <= last]
+        ex = hit[0] if hit else last
+        trades.append({"entry_date": d.index[entry], "exit_date": d.index[ex], "hit": bool(hit),
+                       "ret": c[ex] / o[entry] - 1 - cost})
+        r0 = int(rng.integers(0, n - (ex - entry) - 1))        # 같은 보유기간 무작위 매매 (비교용)
+        rand.append(c[r0 + ex - entry] / o[r0] - 1 - cost)
+    if not trades:
+        return None
+    t = pd.DataFrame(trades)
+    return {"trades": t, "n": len(t), "hit%": t["hit"].mean() * 100, "avg%": t["ret"].mean() * 100,
+            "win%": (t["ret"] > 0).mean() * 100, "rand_avg%": float(np.mean(rand)) * 100}
+
+
 def window_signals(d: pd.DataFrame, fl: Optional[pd.DataFrame], ins: Optional[pd.DataFrame]) -> dict:
     """주어진 구간(보통 최근 1년 또는 전체)의 매집 신호와 0~1 점수."""
     v, c = d["Volume"], d["Close"]
@@ -323,6 +358,13 @@ def print_report(name: str, res: dict) -> None:
         if "내부자 순증주식" in s:
             print(f"  내부자 보고: 증가 {s['내부자 증가보고']}건, 감소 {s['내부자 감소보고']}건, "
                   f"순증 {s['내부자 순증주식']:+,.0f}주")
+    cb = cycle_backtest(d)
+    if cb:
+        print("\n[주기 매수 선취매 테스트] 과거 급증 간격으로 다음 급증일 예측 → 2일 전 시가 매수, 급증일 종가 매도 (비용 0.25% 반영)")
+        print(f"  매매 {cb['n']}회, 예측 적중 {cb['hit%']:.0f}%, 평균 {cb['avg%']:+.2f}%, 승률 {cb['win%']:.0f}%, "
+              f"같은 보유기간 무작위 매매 평균 {cb['rand_avg%']:+.2f}%")
+    else:
+        print("\n[주기 매수 선취매 테스트] 규칙적인 급증 주기가 없어 매매 대상 아님")
     r60, b = res["recent60"], res["base"]
     if b is not None:
         keys = ["일평균거래대금(억)", "상승/하락거래량비", "하락일/상승일 평균거래량", "OBV순증%", "AD순증%",
