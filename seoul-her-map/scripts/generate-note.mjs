@@ -37,12 +37,13 @@ const category = cats.find(c => c.category === catKey) || cats[0];
 const signature = args.signature || keywords.find(k => k.tier === "signature").keyword_zh;
 const count = places.length;
 
-const title = makeTitle({ signature, area, category, count });
+const single = places.length === 1 ? places[0] : null;
+const title = single ? `${single.name_zh}｜${single.one_liner_zh}` : makeTitle({ signature, area, category, count });
 const body = makeBody({ area, category, places, keywords });
 const tags = makeTags({ area, category, keywords });
 const narration = makeNarration({ area, places });
 
-const noteDir = p("out", `${today()}-${area.area}-${catKey}`);
+const noteDir = p("out", `${today()}-${area.area}-${single ? single.slug : catKey}`);
 const cardsDir = path.join(noteDir, "cards");
 fs.mkdirSync(cardsDir, { recursive: true });
 fs.copyFileSync(p("templates/theme.css"), path.join(cardsDir, "theme.css"));
