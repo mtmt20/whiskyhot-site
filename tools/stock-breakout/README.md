@@ -215,3 +215,71 @@ DART_API_KEY=키 python story.py 003540 001800 214420          # 대신증권, �
 `stories/summary.md`에 비교표와 종목별 이야기가, `stories/<코드>_story.md`에 종목별 보고서가 저장됩니다.
 DART 응답은 `dart_cache/`에 저장되어 다시 돌릴 때 빠릅니다. 일봉을 받을 수 있으면 주가 위치와 매집점수도 붙습니다.
 뉴스나 비공개 사정은 반영하지 않으므로, 판정은 출발점으로 쓰고 근거 공시를 확인하세요.
+
+---
+
+# 전략 실험실 (`lab.py`)
+
+여러 투자법을 **같은 종목, 같은 비용(왕복 0.25%), 같은 매매 시뮬레이터**로 돌려 비교합니다.
+
+| 전략 | 내용 |
+|---|---|
+| breakout_near | 전고점 아래 접근 + 추세 (단기 돌파 트랙) |
+| breakout_pivot | 전고점 종가 돌파 + 거래량 1.5배 (O'Neil 매수점) |
+| squeeze_break | 스퀴즈 후 20일 고점 돌파 |
+| momentum | 상대강도 상위 + 추세, 월초 진입 |
+| high52 | 52주 신고가 근접 |
+| rsi2_reversion | 200일선 위 단기 과매도 반등 (Connors) |
+| accumulation | 거래량 매집 지표 상위 + 추세 |
+| ml_breakout | 워크포워드 ML 돌파확률 |
+| cycle_frontrun | 주기적 거래량 급증 선취매 |
+| event:종류 | `--events` CSV로 준 공시 이벤트 이후 보유 (증여, 소각 등) |
+| ensemble | 학습 구간 상위 3개 중 2개 이상 동시 신호 |
+
+**과최적화 방지.** 기간을 앞 70%(학습)와 뒤 30%(검증)로 나눕니다. 전략마다 여러 설정 중 하나를 학습 구간에서만 고르고,
+순위와 판정은 검증 구간 성적으로만 매깁니다. 시험한 전략 수만큼 p값을 보정합니다.
+
+**판정.** 검증 구간에서 평균 수익 양수, 보정 p값 0.05 미만, 손익비 1.1 초과면 `채택 후보`. 학습·검증 모두 양수면 `유망, 추가 검증`.
+
+```bash
+python lab.py --note "첫 실행"                     # 한국 기본 유니버스
+python lab.py --events events.csv --note "증여 이벤트 추가"
+```
+
+결과는 `lab_results/leaderboard.csv`, 실행마다 `lab_results/lab_history.csv`에 누적됩니다. 전략을 추가하거나 설정을 바꿀 때마다 메모를 남기면 무엇이 개선됐는지 추적할 수 있습니다.
+
+---
+
+# 자동매매 (`autotrade.py`)
+
+**모의 → 한국투자증권 모의투자 → 실전** 순서로 단계적으로 씁니다. 기본은 내부 모의매매입니다.
+
+| 명령 | 언제 | 하는 일 |
+|---|---|---|
+| plan | 장 마감 후 16:10 | 전략으로 다음 날 매수 계획 생성 |
+| enter | 09:30~10:00 | 아직 전고점 아래이고 갭이 3% 이하면 지정가 매수 |
+| monitor | 장중 5분마다 | 익절가 도달 시 매도, 손절가 이탈 시 시장가 매도, 증권사 잔고와 장부 대조 |
+| close | 15:20 | 보유기간 끝난 종목 종가 동시호가 매도 |
+| status | 아무 때나 | 예수금, 보유 종목, 누적 승률 |
+
+**안전장치**
+- `autotrade_state/STOP` 파일이 있으면 신규 매수 중단. 하루 손실이 한도(기본 2%)를 넘으면 자동 생성됩니다.
+- 1회 주문 상한, 동시 보유 상한, 같은 종목 중복 매수 금지, 허용 시간대 밖 주문 금지.
+- 실전(`kis_live`)은 config의 `allow_live: true`와 환경변수 `AUTOTRADE_LIVE_CONFIRM=YES`가 모두 있어야 동작합니다.
+- 모든 주문은 `autotrade_state/orders.csv`에 기록됩니다.
+
+**설정**
+```bash
+cp autotrade_config.example.json autotrade_config.json    # 전략, 금액, 한도 수정
+export KIS_APP_KEY=... KIS_APP_SECRET=... KIS_ACCOUNT=12345678-01   # 한국투자증권 Open API
+```
+`"mode"`를 `paper` → `kis_mock` → `kis_live` 순으로 바꿉니다. 증권사 tr_id는 개편 때 바뀔 수 있어 config의 `kis` 항목에서 고칠 수 있게 했습니다. KIS 개발자센터 문서와 한 번 대조하세요.
+
+**crontab (평일, 서울 시간 기준 서버)**
+```
+10 16 * * 1-5   cd /path/to/tools/stock-breakout && python autotrade.py plan
+32 9  * * 1-5   cd /path/to/tools/stock-breakout && python autotrade.py enter
+*/5 9-15 * * 1-5 cd /path/to/tools/stock-breakout && python autotrade.py monitor
+21 15 * * 1-5   cd /path/to/tools/stock-breakout && python autotrade.py close
+```
+공휴일에는 증권사가 주문을 거부하므로 별도 처리가 필요 없지만, 로그는 확인하세요.

@@ -1,0 +1,30 @@
+{
+  "mode": "paper",
+  "allow_live": false,
+  "strategy": "ml",
+  "min_prob": 0.6,
+  "days": 3,
+  "take_profit": 0.03,
+  "stop_atr": 2.0,
+  "market": "kr",
+  "picks": 3,
+  "capital_per_trade": 1000000,
+  "max_order_krw": 3000000,
+  "max_positions": 3,
+  "max_daily_loss_pct": 2.0,
+  "max_gap_pct": 3.0,
+  "entry_window": [
+    "09:30",
+    "10:00"
+  ],
+  "monitor_window": [
+    "09:30",
+    "15:15"
+  ],
+  "close_window": [
+    "15:20",
+    "15:29"
+  ],
+  "paper_cash": 10000000,
+  "state_dir": "autotrade_state"
+}

@@ -11,3 +11,6 @@ accumulation_reports/
 intent_scan*.csv
 dart_cache/
 stories/
+lab_results/
+autotrade_state/
+autotrade_config.json
