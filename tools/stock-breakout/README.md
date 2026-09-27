@@ -1,3 +1,51 @@
+# 처음 설치 (내 컴퓨터)
+
+```powershell
+# 1. 코드 받기 (Git과 Python 3.11 이상 필요)
+git clone https://github.com/mtmt20/whiskyhot-site.git
+cd whiskyhot-site
+git checkout claude/stock-breakout-probability-finder-vassu1
+cd tools/stock-breakout
+
+# 2. 라이브러리 설치
+pip install -r requirements.txt
+
+# 3. 키 설정 (윈도우 PowerShell, 한 번만)
+setx PYTHONUTF8 1
+setx DART_API_KEY "발급받은키"          # opendart.fss.or.kr 무료
+setx KRX_ID "아이디"                    # data.krx.co.kr 무료 회원
+setx KRX_PW "비밀번호"
+# 새 PowerShell 창을 열어야 적용됩니다
+```
+
+맥·리눅스는 `setx` 대신 `~/.zshrc`나 `~/.bashrc`에 `export DART_API_KEY=...` 형식으로 넣습니다.
+
+## 실행 순서
+
+| 순서 | 명령 | 확인할 것 |
+|---|---|---|
+| 1 | `python breakout_finder.py` | 데이터가 받아지는지 |
+| 2 | `python lab.py --note "실데이터 첫 실행"` | 채택 후보 전략이 나오는지 |
+| 3 | `python story.py 003540 001800 214420` | 스토리 판정이 공시와 맞는지 |
+| 4 | `python intent.py --months 12 --with-accumulation` | 주가 부양 의지 상위 종목 |
+| 5 | `python accumulation.py --scan-all --max-value 50` | 장기 매집 흔적 종목 |
+| 6 | `copy autotrade_config.example.json autotrade_config.json` 후 `python autotrade.py plan` | 모의매매 계획 |
+
+## 윈도우 작업 스케줄러 (모의매매 자동 실행)
+
+```powershell
+$py = (Get-Command python).Source
+$dir = (Get-Location).Path
+schtasks /create /tn "AT_plan"    /tr "cmd /c cd /d $dir && `"$py`" autotrade.py plan"    /sc weekly /d MON,TUE,WED,THU,FRI /st 16:10
+schtasks /create /tn "AT_enter"   /tr "cmd /c cd /d $dir && `"$py`" autotrade.py enter"   /sc weekly /d MON,TUE,WED,THU,FRI /st 09:32
+schtasks /create /tn "AT_monitor" /tr "cmd /c cd /d $dir && `"$py`" autotrade.py monitor" /sc weekly /d MON,TUE,WED,THU,FRI /st 09:35 /ri 5 /du 06:00
+schtasks /create /tn "AT_close"   /tr "cmd /c cd /d $dir && `"$py`" autotrade.py close"   /sc weekly /d MON,TUE,WED,THU,FRI /st 15:21
+```
+
+장중에는 컴퓨터가 켜져 있고 절전 모드로 들어가지 않아야 합니다.
+
+---
+
 # 전고점 돌파 확률 발굴기
 
 과거 데이터로 "전고점 근처까지 올라온 뒤 실제로 돌파했는가"를 학습해,
