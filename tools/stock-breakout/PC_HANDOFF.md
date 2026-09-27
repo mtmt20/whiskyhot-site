@@ -50,7 +50,16 @@ powershell -ExecutionPolicy Bypass -File setup.ps1
 .\run.ps1 autotrade.py status
 ```
 
-## 5. 사용자에게 보고할 내용
+## 5. 일일 보고서
+
+```powershell
+.\run.ps1 daily_report.py --no-telegram
+```
+
+`reports/latest.html`이 만들어졌는지 확인한다. 사용자가 매일 자동 실행을 원하면 `schedule.ps1`로 등록한다 (StockLab_ 작업 5개).
+텔레그램으로 받고 싶어 하면 README의 텔레그램 절차를 안내한다.
+
+## 6. 사용자에게 보고할 내용
 
 짧은 한국어로, 숫자는 표로:
 
@@ -59,6 +68,7 @@ powershell -ExecutionPolicy Bypass -File setup.ps1
 3. `채택 후보`가 있으면 그 전략과 설정. 없으면 “아직 없음”과 가장 가까운 전략
 4. 공시 이벤트를 돌렸다면 이벤트 종류별 건수와 이벤트 전략 성적
 5. 대신증권·오리온홀딩스·토니모리 스토리 판정 (돌렸다면)
-6. 다음 단계 제안 (키 발급, 모의매매 스케줄 등록 여부 등)
+6. 일일 보고서 생성 여부와 파일 위치
+7. 다음 단계 제안 (키 발급, 모의매매 스케줄 등록 여부, 텔레그램 등)
 
 주의: 과거 성과는 미래를 보장하지 않는다는 점과, 검증 구간 성적 기준이라는 점을 보고에 한 줄 넣는다.

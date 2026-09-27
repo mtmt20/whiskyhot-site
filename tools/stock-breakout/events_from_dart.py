@@ -162,9 +162,16 @@ def main():
     df = pd.DataFrame(ev)
     if df.empty:
         sys.exit("이벤트가 없습니다.")
-    df = df[df["date"] <= pd.Timestamp(today)].drop_duplicates(["code", "date", "type"]).sort_values(["date", "code"])
-    df["date"] = df["date"].dt.strftime("%Y-%m-%d")
+    df = df.drop_duplicates(["code", "date", "type"]).sort_values(["date", "code"])
+    future = df[df["date"] > pd.Timestamp(today)].copy()        # 아직 오지 않은 일정 → 일일 보고서 체크포인트용
+    df = df[df["date"] <= pd.Timestamp(today)].copy()
+    for x in (df, future):
+        x["date"] = x["date"].dt.strftime("%Y-%m-%d")
     df.to_csv(a.out, index=False, encoding="utf-8-sig")
+    up = os.path.join(os.path.dirname(os.path.abspath(a.out)), "upcoming_events.csv")
+    future.to_csv(up, index=False, encoding="utf-8-sig")
+    if len(future):
+        print(f"앞으로의 일정 {len(future)}건 → {up}")
     print(df["type"].value_counts().rename("건수").to_string())
     print(f"\n저장: {a.out}  →  python lab.py --events {a.out}")
 

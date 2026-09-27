@@ -15,3 +15,6 @@ lab_results/
 autotrade_state/
 autotrade_config.json
 .venv/
+reports/
+events.csv
+upcoming_events.csv
