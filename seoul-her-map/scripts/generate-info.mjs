@@ -11,9 +11,12 @@ const args = Object.fromEntries(process.argv.slice(2).map((a, i, arr) =>
 const info = readCsv(p("data/info.csv")).find(x => x.slug === args.slug);
 if (!info) throw new Error(`unknown info slug: ${args.slug}. data/info.csv 참고`);
 const keywords = readCsv(p("data/keywords.csv"));
+const KIND = { info: ["Seoul · Practical", "实用帖", "收藏率最高的一类，落地前看一遍"], avoid: ["Seoul · 避雷", "避雷帖", "本地女生帮你提前踩过的坑"], shopping: ["Seoul · Shopping", "购物清单", "照着买不踩雷"] }[info.kind || "info"];
 const steps = info.steps_zh.split("｜").map(s => s.replace(/^\d+\.\s*/, "").trim()).filter(Boolean);
 
-const title = `${info.title_zh}｜${info.hook_zh}`.slice(0, 30);
+const hookFirst = info.hook_zh.split(/[，,。]/)[0];
+const title = (info.title_zh.length + info.hook_zh.length + 1 <= 30) ? `${info.title_zh}｜${info.hook_zh}`
+  : (info.title_zh.length + hookFirst.length + 1 <= 30) ? `${info.title_zh}｜${hookFirst}` : info.title_zh;
 const tags = [...keywords.filter(k => k.tier === "big").slice(0, 2).map(k => k.keyword_zh), ...info.tags_zh.split(";")].slice(0, 8);
 const body = [`姐妹们，${info.hook_zh}👇`, ...steps.map((s, i) => `${i + 1}️⃣ ${s}`), `📌 ${info.tip_zh}`, info.avoid_zh ? `⚠️ 避雷：${info.avoid_zh}` : "",
   "收藏起来，到了直接照着做。还有什么想知道的评论区问我。", tags.map(t => "#" + t).join(" ")].filter(Boolean).join("\n\n");
@@ -27,8 +30,8 @@ const common = { brand_zh: BRAND.zh, brand_en: BRAND.en, ai_label: BRAND.aiLabel
   date: today(), date_short: today().slice(0, 7).replace("-", ".") };
 
 fs.writeFileSync(path.join(cardsDir, "01-cover.html"), render(T("cover.html"), { ...common, signature: esc(info.title_zh), area_zh: "", category_zh: "",
-  unit_zh: "步", hook_zh: esc(info.hook_zh), cover_image: "", cover_image_2: "", cover_image_3: "", cover_image_ph: "placeholder", cover_image_2_ph: "placeholder", cover_image_3_ph: "placeholder", sticker_zh: "实用帖", avg_price_zh: "0 · 免费", vibe_line: "收藏率最高的一类，落地前看一遍" }));
-fs.writeFileSync(path.join(cardsDir, "02-steps.html"), render(T("info.html"), { ...common, title_zh: esc(info.title_zh), hook_zh: esc(info.hook_zh),
+  unit_zh: "步", hook_zh: esc(info.hook_zh), cover_image: "", cover_image_2: "", cover_image_3: "", cover_image_ph: "placeholder", cover_image_2_ph: "placeholder", cover_image_3_ph: "placeholder", sticker_zh: KIND[1], avg_price_zh: "0 · 免费", vibe_line: KIND[2] }));
+fs.writeFileSync(path.join(cardsDir, "02-steps.html"), render(T("info.html"), { ...common, eyebrow: KIND[0], title_zh: esc(info.title_zh), hook_zh: esc(info.hook_zh),
   step_items: steps.map((s, i) => `<li><div class="n">${i + 1}</div><div>${esc(s)}</div></li>`).join(""), tip_zh: esc(info.tip_zh), avoid_zh: esc(info.avoid_zh), avoid_display: info.avoid_zh ? "block" : "none" }));
 fs.writeFileSync(path.join(cardsDir, "03-outro.html"), render(T("outro.html"), { ...common, outro_zh: "还想看哪一类实用帖？退税、交通、预约，评论区点名。",
   tag_chips: tags.map(t => `<span class="chip" style="border-color:rgba(245,240,232,.4);color:var(--cream)">#${esc(t)}</span>`).join("") }));

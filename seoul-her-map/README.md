@@ -26,7 +26,7 @@ video.sh 는 시스템 ffmpeg(libx264·png)가 필요하다. 맥은 `brew instal
 
 ## 데이터
 
-현재 검증된 장소: 마곡 2, 성수 6, 연남 4, 홍대 4, 도산 3, 한남 2 (2026-09-25 웹 확인). 누데이크 성수 본점은 폐업했고 하우스 노웨어 5층 티하우스로 넣었다.
+현재 검증된 장소 27곳: 마곡 4, 성수 7, 연남 4, 홍대 5, 도산 3, 한남 2, COEX 1, 명동 1 (2026-09-25~27 웹 확인). 미검증 후보는 data/candidates.csv 에 따로 두고, 현장 확인 후 places.csv 로 옮긴다. 누데이크 성수 본점은 폐업했고 하우스 노웨어 5층 티하우스로 넣었다.
 
 | 파일 | 역할 |
 |---|---|
@@ -34,7 +34,8 @@ video.sh 는 시스템 ffmpeg(libx264·png)가 필요하다. 맥은 `brew instal
 | data/areas.csv | 동네별 중국어 이름, 훅 문장, 지하철역, 롱테일 태그 |
 | data/keywords.csv | 큰 키워드 / 시그니처 / 롱테일 3층 |
 | data/categories.csv | 카테고리 중국어 이름과 단위(家/处) |
-| data/info.csv | 실용 정보 노트(스텝형) |
+| data/info.csv | 스텝형 노트. `kind` = info(실용) / avoid(避雷) / shopping(구매 리스트). shopping 중 daiso-beauty-draft 는 공개 리스트 기반 초안이라 실사용 확인 후 발행 |
+| data/candidates.csv | 주소·영업시간이 미확인인 후보 장소 |
 | data/calendar.csv | 첫 12개 노트 발행 순서와 명령 |
 | docs/STRATEGY.md · ACCOUNT.md · PITCH.md | 운영 전략, 프로필·合集·私信 문구, 협찬 제안서 |
 | images/mascot.svg · mascot.png | 뒷모습 단발 캐릭터(얼굴 없음). 커버 오른쪽 아래와 프로필용 |

@@ -11,3 +11,11 @@ day,date_offset,type,command,area_or_slug,collection,note
 10,10,single,generate-note --slugs cafe-layered-yeonnam,yeonnam,延南慢走,探店 샘플 2
 11,11,area,generate-note --category mix,hannam,汉南周末,한남 2곳 + 추가 검증 후
 12,12,single,generate-note --slugs haus-dosan,dosan,岛山变美,探店 샘플 3 (뷰티 협찬용)
+13,14,info,generate-info,taxi-avoid,首尔实用帖,避雷 기둥 첫 노트 (실험 B)
+14,15,info,generate-info,daiso-beauty-draft,岛山变美,다이소 뷰티 (실험 C. 실사용 확인 후 발행)
+15,16,info,generate-info,life4cut-howto,弘大夜,인생네컷 사용법
+16,17,area,generate-note --category mix,coex,首尔实用帖,별마당도서관
+17,18,info,generate-info,convenience-store-guide,落地第一站｜麻谷,편의점 가이드
+18,19,info,generate-info,myeongdong-avoid,首尔实用帖,명동 避雷
+19,21,single,generate-note --slugs ttukseom-hangang-park,seongsu,圣水半日,한강 라면 探店
+20,22,info,generate-info,jjimjilbang-etiquette,落地第一站｜麻谷,찜질방 예절 (김포 근처 찜질방 검증 후 장소 노트 추가)
