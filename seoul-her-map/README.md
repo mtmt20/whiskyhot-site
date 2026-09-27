@@ -21,8 +21,10 @@ npm run note -- --area magok --category spot
 
 실용 정보 노트(교통·퇴세·예약): `node scripts/generate-info.mjs --slug gimpo-arrival` (data/info.csv 에 정의, 커버+스텝+아웃트로 3장).
 
+검토용 한 장 보기: `node scripts/contact-sheet.mjs out/<note>` → contact.png (3열 썸네일, 폰으로 보기 좋음). `samples/` 에 렌더 예시가 있다.
+
 영상 노트로 만들 때: `scripts/tts.sh out/<note>` 로 narration.mp3 를 만들고 `scripts/video.sh out/<note>` 로 note.mp4 를 합친다.
-video.sh 는 시스템 ffmpeg(libx264·png)가 필요하다. 맥은 `brew install ffmpeg`. 이 저장소를 만든 클라우드 환경에는 그 ffmpeg 가 없어 mp4 합성만 미검증이며, 나머지는 실제 렌더로 확인했다. 剪映에 PNG 를 직접 올려도 된다.
+video.sh 는 시스템 ffmpeg(libx264·png)가 필요하다. 맥은 `brew install ffmpeg`. 이 저장소를 만든 클라우드 환경에는 그 ffmpeg 가 없어 mp4 합성만 미검증이며, 나머지는 실제 렌더로 확인했다. 剪映에 PNG 를 직접 올려도 된다. tts.sh(Edge TTS)도 이 클라우드 환경에서는 프록시 인증서 문제로 실행하지 못했고, 맥·PC에서 `pip install edge-tts` 후 바로 쓰면 된다.
 
 ## 데이터
 
