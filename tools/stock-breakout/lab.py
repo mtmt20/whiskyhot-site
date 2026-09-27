@@ -9,7 +9,8 @@
   - 기간을 앞 70%(학습)와 뒤 30%(검증)로 나눈다.
   - 전략마다 여러 설정(변형)을 학습 구간에서만 비교해 하나를 고른다.
   - 순위와 채택 여부는 검증 구간 성적으로만 매긴다.
-  - 여러 전략을 동시에 시험한 만큼 p값을 본페로니 방식으로 보정한다.
+  - 여러 전략을 동시에 시험한 만큼 p값을 본페로니 방식으로 보정한다 (일부만 돌려도 전체 전략 수 기준).
+  - 유의성과 판정은 같은 기간 유니버스 평균 대비 초과수익으로 본다 (상승장 착시 제거).
 
 전략
   breakout_near     전고점 아래 접근 + 추세 (단기 돌파 트랙)
@@ -18,6 +19,8 @@
   momentum          상대강도 상위 10% + 추세, 월초 진입
   high52            52주 신고가 근접 모멘텀
   rsi2_reversion    200일선 위 단기 과매도 반등 (Connors RSI2)
+  short_reversal    최근 1주·1개월 급락 하위 10% 반전 (한국 A등급), 복권형 제외
+  low_ivol          고유변동성 하위 종목 월초 매수 (한국 A등급)
   accumulation      거래량 매집 지표 상위 + 추세
   ml_breakout       워크포워드 ML 돌파확률 ≥ 기준
   cycle_frontrun    주기적 거래량 급증 선취매
@@ -65,6 +68,12 @@ def prepare(data: Dict[str, pd.DataFrame], flows: Dict[str, pd.DataFrame]) -> di
         d["ma200"] = c.rolling(200).mean()
         d["vol_ratio"] = d["Volume"] / d["Volume"].rolling(50).mean().shift()
         d["hi20_prev"] = d["High"].rolling(20).max().shift()
+        r = c.pct_change()
+        d["ret5"] = c.pct_change(5)
+        d["maxret20"] = r.rolling(20).max()                  # 복권형 지표
+        m = mkt.reindex(d.index).pct_change()
+        beta = r.rolling(60).cov(m) / m.rolling(60).var()
+        d["ivol60"] = (r - beta * m).rolling(60).std()       # 고유변동성
         frames[t] = d
     P = lambda col: pd.DataFrame({t: f[col] for t, f in frames.items()})  # noqa: E731
     idx = mkt.reindex(P("Close").index)
@@ -73,7 +82,7 @@ def prepare(data: Dict[str, pd.DataFrame], flows: Dict[str, pd.DataFrame]) -> di
     regime = (idx > idx.rolling(20).mean()) & (breadth > 0.4)
     accum_cols = ["ud_ratio", "obv_slope", "cmf", "pocket_pivots", "obv_div"]
     accum = sum(P(c).rank(axis=1, pct=True).fillna(0.5) for c in accum_cols) / len(accum_cols)
-    return {"cfg": cfg, "frames": frames, "data": data, "P": P, "regime": regime,
+    return {"cfg": cfg, "frames": frames, "data": data, "P": P, "regime": regime, "mkt": idx,
             "rs_rank": P("rs_raw").rank(axis=1, pct=True), "accum_rank": accum.rank(axis=1, pct=True),
             "dates": close.index, "tickers": list(frames)}
 
@@ -208,6 +217,28 @@ def s_ml(ctx, v):
     return m, pr, {"hold": 3, "target": "prior_high", "tp": v["tp"], "stop_atr": 2.0}
 
 
+def s_reversal(ctx, v):
+    """단기 반전 (카탈로그 1번, 한국 A등급). 최근 급락 하위 + 200일선 위 + 복권형 제외."""
+    P = ctx["P"]
+    ret = P(v["look"])
+    m = (ret.rank(axis=1, pct=True) <= v["q"]) & (P("Close") > P("ma200")) & \
+        (P("maxret20").rank(axis=1, pct=True) <= 0.8)
+    return m, -ret, {"hold": v["hold"], "stop_atr": v.get("stop_atr")}
+
+
+def s_low_ivol(ctx, v):
+    """저고유변동성 (카탈로그 17번, 한국 A등급). 월초에 고유변동성 하위 종목 매수."""
+    P = ctx["P"]
+    dates = ctx["dates"]
+    per = pd.Series(dates.to_period("M"), index=dates)
+    month_start = (per != per.shift()).values
+    iv = P("ivol60").rank(axis=1, pct=True)
+    m = (iv <= v["q"]) & month_start[:, None]
+    if v.get("trend"):
+        m = m & (P("trend") >= 4 / 7)
+    return m, -iv, {"hold": v["hold"]}
+
+
 STRATEGIES: Dict[str, tuple] = {
     "breakout_near": ("전고점 접근 + 추세", s_breakout_near, [
         {"near": 0.03, "trend": 5 / 7, "tp": 0.03, "stop_atr": 2.0, "hold": 3},
@@ -226,6 +257,11 @@ STRATEGIES: Dict[str, tuple] = {
     "rsi2_reversion": ("200일선 위 단기 과매도", s_rsi2, [
         {"rsi": 10, "hold": 5}, {"rsi": 5, "hold": 5}, {"rsi": 10, "hold": 5, "stop_atr": 3.0}]),
     "accumulation": ("매집 지표 상위 + 추세", s_accum, [{"rank": 0.9, "hold": 20}, {"rank": 0.95, "hold": 40}]),
+    "short_reversal": ("단기 급락 반전 (한국 A)", s_reversal, [
+        {"look": "ret5", "q": 0.1, "hold": 5}, {"look": "ret20", "q": 0.1, "hold": 20},
+        {"look": "ret20", "q": 0.1, "hold": 10, "stop_atr": 3.0}]),
+    "low_ivol": ("저고유변동성 월초 (한국 A)", s_low_ivol, [
+        {"q": 0.2, "hold": 20}, {"q": 0.2, "hold": 20, "trend": True}, {"q": 0.1, "hold": 60}]),
     "ml_breakout": ("워크포워드 ML 돌파확률", s_ml, [
         {"p": 0.55, "tp": 0.03}, {"p": 0.60, "tp": 0.03}, {"p": 0.65, "tp": 0.0}]),
 }
@@ -264,15 +300,28 @@ def run_events(ctx: dict, events: pd.DataFrame, v: dict) -> pd.DataFrame:
 # --------------------------------------------------------------------------- #
 # 성과 측정
 # --------------------------------------------------------------------------- #
+def add_bench(tr: pd.DataFrame, mkt: pd.Series) -> pd.DataFrame:
+    """같은 기간 유니버스 동일가중 지수 수익률(bench)과 초과수익(excess)을 붙인다."""
+    if tr is None or tr.empty:
+        return tr
+    m = mkt.ffill()
+    b = m.reindex(pd.DatetimeIndex(tr["exit_date"])).values / m.reindex(pd.DatetimeIndex(tr["signal_date"])).values - 1
+    return tr.assign(bench=b, excess=tr["ret"].values - b)
+
+
 def metrics(tr: pd.DataFrame) -> dict:
+    """확률·수익 지표. 유의성(t, p)은 시장 대비 초과수익 기준으로 계산한다."""
     if tr is None or tr.empty:
         return {"n": 0}
     r = tr["ret"].values
+    x = tr["excess"].values if "excess" in tr else r
+    x = x[np.isfinite(x)]
     n = len(r)
-    sd = r.std(ddof=1) if n > 1 else np.nan
-    tstat = r.mean() / sd * math.sqrt(n) if sd and sd > 0 else 0.0
+    sd = x.std(ddof=1) if len(x) > 1 else np.nan
+    tstat = x.mean() / sd * math.sqrt(len(x)) if sd and sd > 0 else 0.0
     gains, losses = r[r > 0].sum(), -r[r < 0].sum()
     return {"n": n, "win": (r > 0).mean() * 100, "avg": r.mean() * 100, "med": float(np.median(r)) * 100,
+            "exc": float(x.mean()) * 100 if len(x) else np.nan,
             "pf": gains / losses if losses > 0 else np.nan, "t": tstat,
             "p": 0.5 * math.erfc(tstat / math.sqrt(2)), "hold": tr["hold"].mean(),
             "hit": tr["hit"].mean() * 100 if "hit" in tr else np.nan}
@@ -358,6 +407,7 @@ def main() -> None:
             runners[f"event:{ty}"] = (f"이벤트 '{ty}' 이후 보유", [
                 {"type": ty, "offset": 1, "hold": 20}, {"type": ty, "offset": 1, "hold": 60},
                 {"type": ty, "offset": 40, "hold": 60}], (lambda v: run_events(ctx, events, v)))
+    n_defined = len(runners) + 1          # + ensemble. 일부만 돌려도 보정은 전체 기준 (골라보기 방지)
     if a.only:
         runners = {k: v for k, v in runners.items() if k in a.only}
 
@@ -366,7 +416,7 @@ def main() -> None:
         print(f"  {key} ({len(variants)}개 설정)...", file=sys.stderr)
         best = None
         for v in variants:
-            tr = runner(v)
+            tr = add_bench(runner(v), ctx["mkt"])
             is_tr, oos_tr = split(tr, cut)
             mi = metrics(is_tr)
             rank_key = (mi.get("n", 0) >= a.min_trades, mi.get("t", -99))
@@ -379,6 +429,7 @@ def main() -> None:
         chosen[key] = (v, tr)
         rows.append({"전략": key, "설명": desc, "설정": ", ".join(f"{k}={round(x, 3) if isinstance(x, float) else x}" for k, x in v.items()),
                      "학습_거래": mi.get("n", 0), "학습_승률": mi.get("win"), "학습_평균%": mi.get("avg"),
+                     "학습_초과%": mi.get("exc"), "검증_초과%": mo.get("exc"),
                      "학습_t": mi.get("t"),
                      "검증_거래": mo.get("n", 0), "검증_승률": mo.get("win"), "검증_평균%": mo.get("avg"),
                      "검증_PF": mo.get("pf"), "검증_목표도달%": mo.get("hit"), "검증_보유일": mo.get("hold"),
@@ -395,11 +446,12 @@ def main() -> None:
             scores.append(s.rank(axis=1, pct=True).fillna(0))
         agree = sum(masks) >= 2
         ex = STRATEGIES[panel_keys[0]][1](ctx, chosen[panel_keys[0]][0])[2]
-        tr = run_panel_strategy(ctx, agree, sum(scores), ex)
+        tr = add_bench(run_panel_strategy(ctx, agree, sum(scores), ex), ctx["mkt"])
         is_tr, oos_tr = split(tr, cut)
         mi, mo, po = metrics(is_tr), metrics(oos_tr), portfolio(oos_tr, cut, end, a.max_pos)
         rows.append({"전략": "ensemble", "설명": "상위 3개 중 2개 이상 동시 신호", "설정": "+".join(panel_keys),
                      "학습_거래": mi.get("n", 0), "학습_승률": mi.get("win"), "학습_평균%": mi.get("avg"),
+                     "학습_초과%": mi.get("exc"), "검증_초과%": mo.get("exc"),
                      "학습_t": mi.get("t"), "검증_거래": mo.get("n", 0), "검증_승률": mo.get("win"),
                      "검증_평균%": mo.get("avg"), "검증_PF": mo.get("pf"), "검증_목표도달%": mo.get("hit"),
                      "검증_보유일": mo.get("hold"), "검증_p": mo.get("p"), "검증_연수익%": po.get("cagr"),
@@ -407,22 +459,22 @@ def main() -> None:
         chosen["ensemble"] = ({}, tr)
 
     lb = pd.DataFrame(rows)
-    m_tests = len(lb)
+    m_tests = max(len(lb), n_defined)
     lb["검증_p보정"] = (lb["검증_p"] * m_tests).clip(upper=1.0)
 
     def verdict(r):
         if (r["검증_거래"] or 0) < a.min_trades:
             return "표본 부족"
-        if r["검증_평균%"] > 0 and r["검증_p보정"] < 0.05 and (r["검증_PF"] or 0) > 1.1:
+        if r["검증_초과%"] > 0 and r["검증_평균%"] > 0 and r["검증_p보정"] < 0.05 and (r["검증_PF"] or 0) > 1.1:
             return "채택 후보"
-        if r["검증_평균%"] > 0 and (r["학습_평균%"] or 0) > 0:
+        if r["검증_초과%"] > 0 and (r["학습_초과%"] or 0) > 0 and r["검증_평균%"] > 0:
             return "유망, 추가 검증"
         return "기각"
     lb["판정"] = lb.apply(verdict, axis=1)
     order = {"채택 후보": 0, "유망, 추가 검증": 1, "표본 부족": 2, "기각": 3}
-    lb = lb.sort_values(["판정", "검증_평균%"], key=lambda s: s.map(order) if s.name == "판정" else -s.fillna(-99))
+    lb = lb.sort_values(["판정", "검증_초과%"], key=lambda s: s.map(order) if s.name == "판정" else -s.fillna(-99))
 
-    show = ["전략", "판정", "검증_거래", "검증_승률", "검증_평균%", "검증_PF", "검증_p보정", "검증_연수익%",
+    show = ["전략", "판정", "검증_거래", "검증_승률", "검증_평균%", "검증_초과%", "검증_PF", "검증_p보정", "검증_연수익%",
             "검증_MDD%", "학습_거래", "학습_평균%", "설정"]
     print("=" * 120)
     print(f" 전략 실험실 | 종목 {len(data)} | 학습 {start.date()}~{cut.date()} | 검증 {cut.date()}~{end.date()} | "
