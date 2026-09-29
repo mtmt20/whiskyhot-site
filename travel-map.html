@@ -1,0 +1,1053 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>해외 리쿼샵 지도 · 나트랑 · 대만 · 일본 위스키 사는 동선 | 위스키핫</title>
+<meta name="description" content="나트랑·타이베이·도쿄·오사카에서 위스키 사는 리쿼샵과 공항 면세점을 지도에 찍고, 공항부터 가까운 순으로 도는 동선과 매장별 취급 위스키·값 예시를 정리했습니다. 2026-09-29 기준." />
+<meta property="og:title" content="해외 리쿼샵 지도 | 위스키핫" />
+<meta property="og:description" content="여행 가서 위스키 어디서 살지 - 지도와 동선, 매장별 물건 정리" />
+<meta property="og:image" content="https://whiskyhot.com/og-image-v2.jpg" />
+<meta property="og:url" content="https://whiskyhot.com/travel-map.html" />
+<link rel="icon" href="/favicon.png" />
+<link rel="canonical" href="https://whiskyhot.com/travel-map.html" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<style>
+  @import url('https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css');
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700&display=swap');
+  /* 2026-09-23 디자인 체계: 밝은 종이색 시세판. 색은 잉크 + 앰버 하나. 사진·그러데이션·이모지 없음.
+     사용자 리뷰("AI가 만든 것 같다, 미감이 끔찍하다")를 받고 전면 교체. 모든 색은 이 토큰만 쓴다 */
+  :root {
+    color-scheme: light;
+    --paper: #F6F1E8; --surface: #FBF8F2; --rule: #DED5C6;
+    --ink: #1E1913; --ink2: #5C544B; --mute: #8C8378;
+    --accent: #A8651A; --down: #2F7A57; --warn: #B3423B;
+    --btn: #1E1913; --btn-ink: #F6F1E8; --overlay: rgba(30,25,19,0.55);
+    --serif: "Noto Serif KR", "Nanum Myeongjo", serif;
+    --sans: Pretendard, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--paper); }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
+    padding: 0 16px 80px;
+  }
+  .wrap { max-width: 680px; margin: 0 auto; }
+  h1 {
+    font-size: 1.7rem; font-weight: 800;
+    background: var(--surface) 0%, var(--accent) 45%, var(--accent) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin: 0 0 6px 0;
+    /* background-clip:text 위에서는 text-shadow가 안 먹으므로 drop-shadow로 배경 사진 위에서도 읽히게 함 */
+    
+  }
+  .tagline {
+    color: var(--ink2); font-size: 1.05rem; font-weight: 600; line-height: 1.4;
+    margin: 0 0 10px 0;  text-wrap: balance;
+  }
+  .subtitle { color: var(--mute); font-size: 0.78rem; margin-bottom: 28px;  }
+  .section-label {
+    display: block; border-left: 3px solid var(--accent); padding-left: 10px;
+    margin: 28px 0 12px 0; font-size: 0.95rem; font-weight: 700;
+  }
+  .section-label-sub { border-left-color: var(--mute); opacity: 0.8; font-size: 0.8rem; font-weight: 600; margin-top: 4px; }
+  ol.rank-list, ul.hot-list { list-style: none; margin: 0; padding: 0; }
+  .rank-row, .hot-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; margin-bottom: 8px; border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    text-decoration: none; color: inherit;
+  }
+  a.rank-row:hover, a.hot-row:hover { border-color: var(--rule); }
+  /* 병 사진이 대부분 흰 배경이라 카드에 그냥 박으면 튀어 보임 -> 앰버 라이팅이 도는
+     원형 스포트라이트 안에 병을 담아서 바 조명 아래 놓인 느낌으로 어우러지게 함 */
+  .rank-thumb-wrap {
+    width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent;
+    
+  }
+  .rank-thumb {
+    max-width: 78%; max-height: 78%; object-fit: contain;
+    
+  }
+  .rank-num { font-weight: 800; color: var(--accent); width: 18px; flex-shrink: 0; font-size: 0.85rem; }
+  .rank-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .rank-bar { height: 4px; border-radius: 999px; background: var(--rule); margin-top: 3px; overflow: hidden; }
+  .rank-bar-fill { height: 100%; border-radius: 999px; background: var(--surface); }
+  .gift-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0 8px 0; }
+  @media (max-width: 480px) { .gift-grid { grid-template-columns: 1fr; } }
+  .gift-card {
+    padding: 14px; border-radius: 14px; background: var(--surface);
+    border: 1px solid var(--rule); display: flex; flex-direction: column; gap: 6px;
+  }
+  .gift-thumb-wrap {
+    width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent;
+    
+  }
+  .gift-thumb-wrap .rank-thumb { max-width: 78%; max-height: 78%; object-fit: contain; }
+  .gift-audience { font-size: 0.78rem; font-weight: 700; color: var(--ink2); }
+  .gift-name { font-size: 1rem; font-weight: 800; }
+  .gift-name a { color: var(--accent); text-decoration: none; }
+  .gift-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .gift-price { color: var(--accent); font-weight: 700; font-size: 0.9rem; }
+  .gift-channel { color: var(--mute); font-size: 0.7rem; }
+  .gift-reason { color: #D8CFC0; font-size: 0.78rem; line-height: 1.5; margin: 0; }
+  .chuseok-promo-card {
+    display: flex; flex-direction: column; gap: 4px; text-decoration: none;
+    margin-bottom: 18px; padding: 14px 16px; border-radius: 14px;
+    background: var(--surface);
+    border: 1px solid rgba(193,80,46,0.32);
+  }
+  .chuseok-promo-badge { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.04em; color: #E8956B; text-transform: uppercase; }
+  .chuseok-promo-title { font-size: 1rem; font-weight: 800; color: var(--ink); }
+  .chuseok-promo-cta { font-size: 0.82rem; color: var(--ink2); }
+  .recent-price-strip { margin-bottom: 18px; }
+  /* 홈 "지금 싼 값" - 랭킹보다 위에 둬서 커뮤니티에서 들어온 사람이 제일 먼저 보게 한다 */
+  .home-deal-strip { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
+  .home-deal-row {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    padding: 11px 14px; border-radius: 12px; text-decoration: none;
+    background: var(--rule); border: 1px solid var(--rule);
+  }
+  .home-deal-row:hover { background: var(--surface); }
+  .home-deal-name { color: var(--ink); font-weight: 600; font-size: 0.9rem; min-width: 0; }
+  .home-deal-right { white-space: nowrap; flex-shrink: 0; }
+  .home-deal-right b { color: var(--accent); font-weight: 800; font-size: 0.96rem; }
+  .home-deal-right em { color: var(--accent); font-style: normal; font-weight: 700; font-size: 0.78rem; margin-left: 8px; }
+  /* 홈 메인 버튼: 게시판. 사이트의 진짜 자산인 회원 제보가 여기서 시작한다 */
+  .hero-board-btn {
+    display: block; padding: 14px 16px; border-radius: 14px; text-decoration: none; margin: 4px 0 16px;
+    background: var(--surface); box-shadow: 0 6px 22px var(--surface);
+  }
+  .hero-board-btn:hover { filter: brightness(1.05); }
+  .hero-board-title { display: block; color: var(--btn-ink); font-weight: 800; font-size: 1rem; }
+  .hero-board-desc { display: block; color: rgba(26,18,7,0.78); font-size: 0.76rem; margin-top: 4px; line-height: 1.45; }
+  .channel-poster { color: var(--mute); font-size: 0.72rem; flex-basis: 100%; }
+  .live-dot {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: #7ec98f; margin-left: 8px; box-shadow: 0 0 0 3px rgba(126,201,143,0.18);
+  }
+  .recent-price-row {
+    display: flex; align-items: baseline; gap: 8px; text-decoration: none;
+    padding: 9px 2px; border-bottom: 1px solid var(--rule);
+  }
+  .recent-price-row:last-child { border-bottom: none; }
+  .recent-price-name { flex-shrink: 0; font-size: 0.86rem; font-weight: 700; color: var(--ink); }
+  .recent-price-store { flex: 1; min-width: 0; font-size: 0.74rem; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .recent-price-amount { flex-shrink: 0; font-size: 0.86rem; font-weight: 800; color: var(--accent); }
+  /* ---- 홈 레이아웃(2026-09-21 정돈): 헤더 / 한 줄 소개 / 메뉴 칩 / 공통 섹션 헤더 / 탭 / 더보기 / 둘러보기 그리드 / 푸터 ---- */
+  .site-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+  .site-brand {
+    font-size: 1.3rem; font-weight: 800; margin: 0; line-height: 1.2; white-space: nowrap;
+    background: var(--surface) 0%, var(--accent) 45%, var(--accent) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    
+  }
+  .site-brand a { color: inherit; text-decoration: none; }
+  .site-brand-en { font-size: 0.7rem; letter-spacing: 0.1em; margin-left: 4px; }
+  .site-header-auth { display: flex; align-items: center; gap: 8px; flex-shrink: 0; min-height: 30px; }
+  .site-header-login-label { font-size: 0.74rem; color: var(--mute); }
+  @media (max-width: 420px) { .site-header-login-label { display: none; } }
+  /* 한글은 글자 단위로 줄이 바뀌어 "실제/로 산"처럼 단어 중간이 끊긴다 - 홈의 문장형 텍스트는 어절 단위로만 줄바꿈 */
+  .home .hero-line, .home .sec-cap, .home .mover-reason, .home .explore-desc, .home .release-summary,
+  .home .chuseok-promo-title { word-break: keep-all; overflow-wrap: anywhere; }
+  .site-header-auth:has(.auth-user-badge) .site-header-login-label { display: none; }
+  .site-header .auth-widget { position: static; }
+  .site-header .auth-provider-btn { width: 30px; height: 30px; box-shadow: none; }
+  .hero-line {
+    font-size: 1.18rem; font-weight: 700; line-height: 1.45; color: var(--ink); margin: 0 0 6px;
+    text-wrap: balance; 
+  }
+  .hero-line strong { color: var(--accent); }
+  .hero-date { font-size: 0.76rem; color: var(--mute); margin: 0 0 16px;  }
+  /* 카페에 링크를 공유한 뒤 처음 온 사람이 오른쪽 아래 "의견" 버튼을 못 보고 지나치길래, 첫 화면 소개줄에 같은 창을 여는 링크를 하나 더 둔다 */
+  .hero-feedback { color: #5EEAD4; text-decoration: underline; text-underline-offset: 2px; }
+  .quick-nav {
+    display: flex; gap: 8px; overflow-x: auto; margin: 0 -18px 8px; padding: 2px 18px 6px;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .quick-nav::-webkit-scrollbar { display: none; }
+  .quick-chip {
+    flex-shrink: 0; padding: 8px 14px; border-radius: 999px; white-space: nowrap; text-decoration: none;
+    border: 1px solid var(--rule); background: var(--surface); color: var(--ink);
+    font-size: 0.84rem; font-weight: 600;
+  }
+  .quick-chip:hover, .quick-chip:focus-visible { border-color: var(--accent); color: var(--accent); }
+  .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 36px 0 4px; }
+  .sec-title { font-size: 1.08rem; font-weight: 800; margin: 0; color: var(--ink); }
+  .sec-more { font-size: 0.78rem; color: var(--accent); text-decoration: none; flex-shrink: 0; }
+  .sec-cap { color: var(--mute); font-size: 0.74rem; margin: 0 0 12px; line-height: 1.5; }
+  .movers .sec-head { margin-top: 14px; }
+  .home-tabs { display: flex; gap: 6px; margin: 0 0 12px; }
+  .home-tab {
+    padding: 7px 14px; border-radius: 999px; font: inherit; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+    background: transparent; color: var(--mute); border: 1px solid var(--rule);
+  }
+  .home-tab.active { color: var(--btn-ink); background: var(--surface); border-color: transparent; }
+  .collapsible:not(.expanded) > .rank-row:nth-child(n+6),
+  .collapsible:not(.expanded) > .release-row:nth-child(n+4) { display: none; }
+  .expand-btn {
+    display: block; width: 100%; margin-top: 8px; padding: 11px; border-radius: 12px; font: inherit;
+    font-size: 0.84rem; font-weight: 700; cursor: pointer; color: var(--ink2);
+    background: var(--rule); border: 1px dashed var(--rule);
+  }
+  .expand-btn:hover { color: var(--accent); border-color: var(--rule); }
+  .home-picks { margin-top: 30px; }
+  .home .release-summary { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .home .release-list { margin-bottom: 0; }
+  .explore-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .explore-card {
+    display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 14px; text-decoration: none;
+    background: var(--surface); border: 1px solid var(--rule);
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .explore-card:hover, .explore-card:focus-visible { border-color: var(--rule); background: var(--rule); }
+  .explore-card:last-child:nth-child(odd) { grid-column: span 2; }
+  .explore-title { font-size: 0.9rem; font-weight: 800; color: var(--accent); }
+  .explore-desc { font-size: 0.74rem; color: var(--ink2); line-height: 1.45; }
+  .accessory-note { text-align: center; margin: 18px 0 0; font-size: 0.78rem; }
+  .accessory-note a { color: var(--mute); }
+  /* 오른쪽 아래 "의견" 버튼이 페이지 맨 끝 줄(오른쪽 정렬된 가격)을 가리지 않게 여백을 둔다 */
+  .wrap { padding-bottom: 76px; }
+  .site-footer { margin-top: 44px; padding-top: 20px; border-top: 1px solid var(--rule); text-align: center; }
+  .site-footer-brand { font-size: 0.82rem; font-weight: 800; letter-spacing: 0.08em; color: var(--mute); margin-bottom: 6px; }
+  .site-footer p { margin: 4px 0; font-size: 0.74rem; color: var(--mute); line-height: 1.6; }
+  .site-footer a { color: var(--mute); }
+  .movers { margin-bottom: 6px; }
+  .mover-list { display: flex; flex-direction: column; gap: 8px; }
+  .mover-row {
+    display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 14px;
+    background: var(--rule); border: 1px solid var(--rule); text-decoration: none;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .mover-row:hover { border-color: var(--rule); background: var(--rule); }
+  .mover-thumb-wrap { width: 44px; height: 60px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .mover-thumb { max-width: 44px; max-height: 60px; }
+  .mover-info { flex: 1; min-width: 0; }
+  .mover-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .mover-name { font-weight: 800; color: var(--ink); font-size: 0.95rem; }
+  .mover-badge { font-size: 0.68rem; font-weight: 800; padding: 2px 8px; border-radius: 999px; letter-spacing: 0.03em; }
+  .mover-badge-new { background: rgba(94,234,212,0.14); color: #5EEAD4; border: 1px solid rgba(94,234,212,0.35); }
+  .mover-badge-up { background: var(--rule); color: var(--accent); border: 1px solid var(--rule); }
+  .mover-reason { margin: 4px 0 0; font-size: 0.8rem; color: var(--ink2); line-height: 1.5; }
+  .mover-price { display: inline-block; margin-top: 6px; font-size: 0.78rem; font-weight: 700; color: var(--accent); }
+  .seo-h2 { font-size: 0.95rem; font-weight: 700; margin: 26px 0 10px; border-left: 3px solid var(--accent); padding-left: 10px; }
+  .related-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .related-card {
+    display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px;
+    padding: 12px 8px; border-radius: 12px; background: var(--rule);
+    border: 1px solid var(--rule); text-decoration: none;
+  }
+  .related-card:hover { border-color: var(--rule); }
+  .related-thumb-wrap { height: 64px; display: flex; align-items: center; }
+  .related-thumb { max-height: 64px; max-width: 48px; }
+  .related-name { font-size: 0.8rem; font-weight: 700; color: var(--ink); line-height: 1.3; }
+  .related-meta { font-size: 0.7rem; color: var(--mute); }
+  .fb-fab {
+    position: fixed; right: 16px; bottom: 16px; z-index: 9000; display: flex; align-items: center; gap: 6px;
+    padding: 10px 14px; border-radius: 999px; border: 1px solid var(--rule); background: var(--btn-ink);
+    color: var(--accent); font: inherit; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+    
+  }
+  .fb-fab:hover { background: var(--surface); }
+  .fb-panel {
+    position: fixed; right: 16px; bottom: 64px; z-index: 9001; width: min(320px, calc(100vw - 32px));
+    padding: 14px; border-radius: 14px; background: #1F160C; border: 1px solid var(--rule);
+    
+  }
+  .fb-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; color: var(--ink); font-size: 0.9rem; }
+  .fb-close { all: unset; cursor: pointer; font-size: 1.2rem; color: var(--mute); padding: 0 4px; }
+  .fb-votes { display: flex; gap: 8px; margin-bottom: 10px; }
+  .fb-vote {
+    flex: 1; padding: 8px; border-radius: 10px; background: var(--rule); border: 1px solid var(--rule);
+    color: var(--ink2); font: inherit; font-size: 0.82rem; cursor: pointer;
+  }
+  .fb-vote.selected { background: var(--surface); color: var(--btn-ink); font-weight: 700; border-color: transparent; }
+  .fb-text, .fb-contact {
+    width: 100%; box-sizing: border-box; font: inherit; font-size: 0.82rem; color: var(--ink); padding: 8px 10px;
+    border-radius: 10px; background: var(--rule); border: 1px solid var(--rule); margin-bottom: 8px;
+  }
+  .fb-text { min-height: 72px; resize: vertical; }
+  .fb-submit { width: 100%; margin-top: 2px; border: none; cursor: pointer; font: inherit; }
+  .fb-done { margin: 8px 0 0; font-size: 0.82rem; color: #5EEAD4; text-align: center; }
+  .fb-err { margin: 8px 0 0; font-size: 0.78rem; color: #F87171; text-align: center; }
+  .gift-q { margin-bottom: 22px; }
+  .gift-opts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .gift-opt {
+    padding: 9px 16px; border-radius: 999px; background: var(--rule);
+    border: 1px solid var(--rule); color: var(--ink); font-family: inherit;
+    font-size: 0.85rem; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .gift-opt:hover { background: var(--surface); }
+  .gift-opt.selected { background: var(--surface); color: var(--btn-ink); font-weight: 700; border-color: transparent; }
+  .gift-result { margin-top: 8px; }
+  .gift-mode-toggle { display: flex; gap: 8px; margin-bottom: 22px; }
+  .gift-mode-btn {
+    flex: 1; padding: 12px 10px; border-radius: 12px; background: var(--rule);
+    border: 1px solid var(--rule); color: var(--ink2); font-family: inherit;
+    font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .gift-mode-btn:hover { background: var(--surface); }
+  .gift-mode-btn.selected { background: var(--surface); color: var(--btn-ink); border-color: transparent; }
+  .gift-hero { text-align: center; padding: 2px 0 6px; }
+  .gift-hero-badge {
+    display: inline-block; padding: 5px 14px; border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--rule); color: var(--accent);
+    font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .gift-hero h1 {
+    font-size: 1.6rem; font-weight: 800; line-height: 1.4; margin: 0 0 10px;
+    background: var(--surface);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .gift-hero p { font-size: 0.88rem; color: var(--ink2); margin: 0; line-height: 1.65; }
+  .gift-progress { display: flex; justify-content: center; gap: 8px; margin: 4px 0 24px; }
+  .gift-progress-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--rule); transition: background 0.2s ease, transform 0.2s ease; }
+  .gift-progress-dot.done { background: var(--accent); transform: scale(1.2); }
+  .saju-year-row { display: flex; gap: 10px; align-items: center; }
+  .saju-element-banner {
+    display: flex; align-items: center; gap: 14px; padding: 16px; margin-bottom: 16px;
+    border-radius: 14px; background: var(--surface);
+    border: 1px solid var(--rule);
+  }
+  .saju-element-emoji { font-size: 2.4rem; line-height: 1; flex-shrink: 0; }
+  .saju-element-label { font-size: 1.05rem; font-weight: 800; color: var(--accent); }
+  .saju-element-desc { color: #D8CFC0; font-size: 0.82rem; margin: 4px 0 0 0; line-height: 1.5; }
+  .rank-name { font-weight: 700; font-size: 0.95rem; line-height: 1.3; }
+  .rank-meta { color: var(--mute); font-size: 0.72rem; }
+  .hot-caption { color: var(--mute); font-size: 0.72rem; margin: 0 0 12px 0; line-height: 1.5; }
+  .hot-num { font-weight: 800; color: var(--accent); width: 18px; flex-shrink: 0; font-size: 0.85rem; }
+  .hot-name { font-weight: 700; flex: 1; min-width: 0; }
+  .hot-score { color: var(--accent); font-weight: 700; font-size: 0.85rem; }
+  .post-list { display: flex; flex-direction: column; gap: 8px; margin: 0 0 20px 0; }
+  .post-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px; border-radius: 10px;
+    background: var(--rule); border: 1px solid var(--rule);
+    text-decoration: none; transition: background 0.15s ease;
+  }
+  .post-row:hover { background: var(--surface); }
+  .post-title {
+    flex: 1; min-width: 0; color: var(--ink); font-size: 0.88rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .post-comments { color: var(--accent); font-weight: 700; font-size: 0.82rem; flex-shrink: 0; }
+  .event-list { display: flex; flex-direction: column; gap: 8px; margin: 0 0 24px 0; }
+  .event-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: 10px;
+    background: var(--rule); border: 1px solid var(--rule);
+    text-decoration: none; transition: background 0.15s ease;
+  }
+  .event-row:hover { background: var(--surface); }
+  .event-date {
+    flex-shrink: 0; text-align: center; padding: 6px 10px; border-radius: 8px;
+    background: var(--surface); color: var(--accent); font-weight: 700; font-size: 0.76rem;
+    white-space: nowrap;
+  }
+  .event-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .event-name { color: var(--ink); font-weight: 700; font-size: 0.9rem; }
+  .event-meta { color: var(--mute); font-size: 0.76rem; }
+  .release-list { display: flex; flex-direction: column; gap: 8px; margin: 0 0 24px 0; }
+  .release-row {
+    display: block; padding: 12px 14px; border-radius: 10px;
+    background: var(--rule); border: 1px solid var(--rule);
+    text-decoration: none; transition: background 0.15s ease;
+  }
+  .release-row:hover { background: var(--surface); }
+  .release-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .release-name { color: var(--ink); font-weight: 700; font-size: 0.92rem; }
+  .release-date { color: var(--accent); font-size: 0.74rem; flex-shrink: 0; white-space: nowrap; }
+  .release-brand { color: var(--mute); font-size: 0.74rem; margin-top: 2px; }
+  .release-summary { color: var(--ink2); font-size: 0.82rem; margin-top: 6px; line-height: 1.5; }
+  .post-meta { color: var(--mute); font-size: 0.74rem; flex-shrink: 0; white-space: nowrap; }
+  .post-tag {
+    flex-shrink: 0; font-size: 0.68rem; font-weight: 700; padding: 2px 8px;
+    border-radius: 999px; white-space: nowrap;
+  }
+  .post-tag.deal { background: rgba(220,38,38,0.14); color: #FCA5A5; }
+  .post-tag.review { background: rgba(45,212,191,0.14); color: #2DD4BF; }
+  .post-tag.question { background: var(--surface); color: var(--accent); }
+  .post-tag.positive { background: rgba(52,211,153,0.14); color: #34D399; }
+  .post-tag.negative { background: rgba(148,163,184,0.16); color: #94A3B8; }
+  .post-row-static { cursor: default; }
+  .post-row-static:hover { background: var(--surface); }
+  .hot-trend { color: var(--ink2); font-size: 0.82rem; width: 48px; text-align: right; flex-shrink: 0; }
+  .cta {
+    display: block; text-align: center; margin-top: 32px; padding: 16px;
+    border-radius: 12px; background: var(--surface);
+    color: var(--surface); font-weight: 800; text-decoration: none; font-size: 1rem;
+  }
+  footer { margin-top: 40px; color: var(--mute); font-size: 0.75rem; text-align: center; }
+  footer a { color: var(--mute); }
+  .detail-hero { display: flex; gap: 16px; align-items: center; margin-bottom: 20px; }
+  .detail-img-wrap {
+    width: 100px; height: 100px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent;
+    
+  }
+  .detail-img { max-width: 76%; max-height: 76%; object-fit: contain;  }
+  .detail-meta { color: var(--ink2); font-size: 0.85rem; }
+  .illust-badge { display: inline-block; margin-top: 6px; padding: 2px 9px; border-radius: 999px; background: var(--rule); color: var(--mute); font-size: 0.68rem; }
+  .tagline-box {
+    margin-top: 6px; padding: 14px 16px; border-radius: 10px;
+    background: var(--surface);
+    border-left: 3px solid var(--accent);
+  }
+  .tagline-label { color: var(--accent); font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .tagline-text { color: var(--ink); font-size: 0.95rem; font-weight: 700; line-height: 1.4; }
+  .trend-box {
+    margin-top: 6px; margin-bottom: 6px; padding: 14px 16px; border-radius: 10px;
+    background: var(--surface);
+    border-left: 3px solid #2DD4BF;
+  }
+  .trend-label { color: #2DD4BF; font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .trend-text { color: var(--ink); font-size: 0.9rem; line-height: 1.6; }
+  .trend-caption { margin: 8px 0 0; font-size: 0.68rem; color: var(--mute); }
+  .price-box { display: flex; flex-direction: column; gap: 3px; margin: 6px 0 24px 0; }
+  .price-range { color: var(--accent); font-size: 1.3rem; font-weight: 800; }
+  .price-range-caption { color: var(--mute); font-size: 0.72rem; }
+  .price-range-caption a { color: var(--accent); }
+  .price-note { color: var(--mute); }
+  .price-overseas { margin-top: 4px; font-size: 0.72rem; color: var(--mute); }
+  .price-overseas a { color: var(--accent); }
+  .price-buy-link {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; width: fit-content;
+    padding: 8px 16px; border-radius: 999px; text-decoration: none;
+    background: var(--surface); color: var(--surface);
+    font-weight: 700; font-size: 0.82rem;
+  }
+  .channel-price-card { margin: 4px 0 24px 0; padding: 14px 16px; background: var(--rule); border: 1px solid var(--rule); border-radius: 12px; }
+  .channel-price-label { font-size: 0.72rem; color: var(--mute); letter-spacing: 0.04em; margin-bottom: 8px; }
+  .channel-row { display: flex; align-items: baseline; gap: 8px; padding: 6px 0; text-decoration: none; border-top: 1px solid var(--rule); flex-wrap: wrap; }
+  .channel-row:first-of-type { border-top: none; }
+  .channel-name { color: var(--ink); font-size: 0.85rem; font-weight: 600; min-width: 5.5em; }
+  .channel-price { color: var(--accent); font-size: 0.95rem; font-weight: 700; }
+  .channel-discount { font-size: 0.7rem; padding: 1px 7px; border-radius: 999px; }
+  .channel-discount.up { color: #34D399; background: rgba(52,211,153,0.12); }
+  .channel-discount.down { color: var(--mute); background: rgba(138,124,104,0.12); }
+  /* 할인율 구간(0~5/5~10/10~15/15~25/25+)마다 민트 -> 골드 -> 오렌지 -> 레드골드로 색이
+     "뜨거워져서" 숫자를 안 읽어도 색만 보고 할인 강도를 바로 느낄 수 있게 함 */
+  .channel-discount.tier0 { color: #34D399; background: rgba(52,211,153,0.12); }
+  .channel-discount.tier1 { color: #6EE7B7; font-weight: 700; background: rgba(110,231,183,0.14); }
+  .channel-discount.tier2 { color: var(--btn-ink); font-weight: 700; background: var(--accent); }
+  .channel-discount.tier3 { color: var(--btn-ink); font-weight: 800; background: var(--surface); }
+  .channel-discount.tier4 { color: #FFF3E0; font-weight: 800; background: var(--surface); box-shadow: 0 0 10px rgba(220,38,38,0.4); }
+  .channel-bundle { font-size: 0.7rem; color: var(--mute); }
+  .channel-checked { font-size: 0.66rem; color: var(--mute); margin-left: auto; white-space: nowrap; }
+  .channel-price-caption { margin: 8px 0 0; font-size: 0.68rem; color: var(--mute); }
+  .store-list { display: flex; flex-direction: column; gap: 10px; margin: 0 0 8px 0; }
+  .store-row { display: block; padding: 12px 14px; border-radius: 10px; background: var(--rule); border: 1px solid var(--rule); text-decoration: none; }
+  .store-row:hover { background: var(--surface); }
+  .store-row-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .store-name { color: var(--ink); font-weight: 700; font-size: 0.92rem; }
+  .store-name a { color: inherit; }
+  .store-price { color: var(--accent); font-weight: 800; font-size: 1rem; white-space: nowrap; }
+  .store-row-sub { display: flex; align-items: center; gap: 8px; margin-top: 5px; flex-wrap: wrap; min-height: 1em; }
+  .store-meta { color: var(--mute); font-size: 0.68rem; margin-top: 6px; }
+  .store-meta a { color: var(--mute); }
+  .store-empty { color: var(--mute); font-size: 0.85rem; padding: 24px 0; text-align: center; }
+  .airport-pick-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+  .airport-pick-list li { font-size: 0.85rem; color: var(--ink); }
+  .airport-pick-list a { color: var(--accent); text-decoration: none; font-weight: 600; }
+  .airport-pick-list a:hover { text-decoration: underline; }
+  .japan-discount-tip {
+    font-size: 0.78rem; color: var(--ink2); line-height: 1.5; margin: 8px 0 0 0;
+    padding: 8px 10px; border-radius: 8px; background: var(--rule);
+  }
+  .japan-synergy-box {
+    margin: 12px 0 18px 0; padding: 14px 16px; border-radius: 12px;
+    background: var(--rule); border: 1px dashed var(--rule);
+  }
+  .japan-synergy-title { font-weight: 700; color: var(--accent); font-size: 0.92rem; margin-bottom: 8px; }
+  .japan-synergy-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .japan-synergy-list li { color: #D8CFC0; font-size: 0.82rem; line-height: 1.55; }
+  .japan-synergy-list b { color: var(--ink); }
+  .channel-accordion { margin: 28px 0 12px 0; border: 1px solid var(--rule); border-radius: 12px; padding: 2px 10px; transition: background 0.15s ease, border-color 0.15s ease; }
+  .channel-accordion[open] { background: var(--rule); border-color: var(--rule); }
+  .channel-accordion summary.section-label {
+    cursor: pointer; margin: 10px 0; list-style: none; display: flex; align-items: center; gap: 8px;
+    user-select: none; border-left: none; padding-left: 0;
+  }
+  .channel-accordion summary.section-label::-webkit-details-marker { display: none; }
+  /* 화살표 회전만으로는 펼침/닫힘 구분이 애매하다는 피드백 - 방향이 아예 다른 화살표(▶/▼)로
+     바꾸고, 상태를 말로도 알려주는 작은 배지를 같이 붙여서 누가 봐도 헷갈리지 않게 함 */
+  .channel-accordion summary.section-label::before { content: '▶'; color: var(--accent); font-size: 0.75em; flex-shrink: 0; }
+  .channel-accordion[open] summary.section-label::before { content: '▼'; }
+  .channel-accordion summary.section-label .accordion-state {
+    margin-left: auto; font-size: 0.68rem; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+    background: rgba(138,124,104,0.15); color: var(--mute);
+  }
+  .channel-accordion[open] summary.section-label .accordion-state { background: var(--surface); color: var(--accent); }
+  .channel-accordion summary.section-label .accordion-state::before { content: '펼치기'; }
+  .channel-accordion[open] summary.section-label .accordion-state::before { content: '접기'; }
+  .channel-accordion .branch-label { margin: 20px 0 10px 14px; font-size: 0.85rem; opacity: 0.9; }
+  .channel-accordion .branch-label:first-of-type { margin-top: 4px; }
+  .channel-accordion > .store-list, .channel-accordion .branch-label, .channel-accordion + .store-list { padding-bottom: 8px; }
+  .pairing-card { margin-bottom: 28px; border-radius: 14px; overflow: hidden; background: var(--rule); border: 1px solid var(--rule); }
+  .pairing-img { display: block; width: 100%; height: 180px; object-fit: cover; }
+  .pairing-body { padding: 16px 18px 18px; }
+  .pairing-title { font-size: 1.1rem; font-weight: 800; color: var(--accent); margin-bottom: 4px; }
+  .pairing-desc { color: var(--ink2); font-size: 0.85rem; margin: 0 0 14px 0; line-height: 1.5; }
+  .pairing-matches { display: flex; flex-direction: column; gap: 12px; }
+  .pairing-match { padding: 12px 14px; border-radius: 10px; background: var(--rule); border: 1px solid var(--rule); }
+  .pairing-match-head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+  .result-thumb-wrap { width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: transparent;  }
+  .result-thumb { max-width: 76%; max-height: 76%; object-fit: contain; }
+  .pairing-match-head .pairing-match-name { margin: 0; }
+  .pairing-match-name { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
+  .pairing-match-name a { color: var(--ink); }
+  .pairing-note { color: var(--mute); font-size: 0.78rem; margin: 0 0 8px 0; line-height: 1.5; }
+  .pairing-match .param-card { margin: 0; padding: 0; background: none; border: none; }
+  .quiz-progress { height: 6px; border-radius: 999px; background: var(--rule); overflow: hidden; margin-bottom: 8px; }
+  .quiz-progress-fill { height: 100%; background: var(--surface); transition: width 0.3s ease; }
+  .quiz-round-label { color: var(--mute); font-size: 0.78rem; text-align: center; margin: 0 0 18px 0; }
+  .quiz-pair { display: flex; align-items: stretch; gap: 10px; }
+  .quiz-choice { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px; border-radius: 14px; background: var(--rule); border: 1px solid var(--rule); cursor: pointer; font-family: inherit; color: var(--ink); transition: background 0.15s ease, border-color 0.15s ease; }
+  .quiz-choice:disabled { cursor: default; }
+  .quiz-choice img { position: relative; z-index: 1; }
+  .quiz-choice:hover, .quiz-choice:active { background: var(--rule); border-color: var(--rule); }
+  .quiz-choice img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 10px; }
+  .quiz-choice span { font-weight: 700; font-size: 0.9rem; text-align: center; }
+  .quiz-pair.skipped .quiz-choice { opacity: 0.3; transition: opacity 0.3s ease; }
+  .quiz-skip-btn { display: block; margin: 10px auto 0; padding: 6px 16px; background: transparent; border: 1px dashed rgba(138,124,104,0.4); border-radius: 999px; color: var(--mute); font-family: inherit; font-size: 0.76rem; cursor: pointer; transition: color 0.15s ease, border-color 0.15s ease; }
+  .quiz-skip-btn:hover { color: var(--accent); border-color: var(--rule); }
+  .quiz-skip-btn:disabled { cursor: default; opacity: 0.4; }
+  .quiz-vs { flex-shrink: 0; align-self: center; color: var(--accent); font-weight: 800; font-size: 0.85rem; }
+  .final-pair { display: flex; align-items: stretch; gap: 10px; }
+  .final-choice { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px; border-radius: 16px; background: var(--rule); border: 1px solid var(--rule); cursor: pointer; font-family: inherit; color: var(--ink); text-align: center; transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease; position: relative; overflow: hidden; }
+  .final-choice:hover, .final-choice:active { background: var(--rule); border-color: var(--rule); transform: translateY(-2px); }
+  .final-choice.fading { pointer-events: none; }
+  .final-choice.fading:not(.chosen) { opacity: 0.35; transform: scale(0.97); transition: opacity 0.35s ease, transform 0.35s ease; }
+  .final-choice.chosen { border-color: var(--accent); animation: choiceFlashPulse 0.55s ease-out; }
+  .final-choice.chosen::after {
+    content: ''; position: absolute; inset: 0; border-radius: 16px; pointer-events: none;
+    background: transparent;
+    opacity: 0; animation: choiceSparkle 0.6s ease-out;
+  }
+  @keyframes choiceFlashPulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 var(--surface); }
+    35% { transform: scale(1.045); box-shadow: 0 0 26px 10px var(--surface); }
+    100% { transform: scale(1);  }
+  }
+  @keyframes choiceSparkle {
+    0% { opacity: 0.95; }
+    100% { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .final-choice.chosen, .final-choice.chosen::after { animation: none; }
+  }
+  .final-img-wrap { width: 100%; aspect-ratio: 3 / 4; display: flex; align-items: center; justify-content: center; background: transparent; border-radius: 12px; overflow: hidden; }
+  .final-img-wrap img { max-width: 78%; max-height: 88%; object-fit: contain;  }
+  .final-name { font-weight: 800; font-size: 1.02rem; margin-top: 4px; }
+  .final-cask { color: var(--accent); font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  .final-desc { color: var(--ink2); font-size: 0.8rem; line-height: 1.55; }
+  .final-vs { font-size: 1.1rem; }
+  .winner-match { border-color: var(--rule); background: var(--rule); }
+  .winner-match .result-thumb-wrap { width: 84px; height: 84px; }
+  .winner-match .pairing-match-name { font-size: 1.15rem; }
+  .quiz-bottle-wrap { display: flex; justify-content: center; margin: 18px 0 6px; }
+  .quiz-bottle-svg { width: 46px; height: 108px;  transition: filter 0.3s ease; }
+  .quiz-bottle-fill { transition: height 0.4s ease, y 0.4s ease; }
+  .quiz-bottle-svg.bottle-glow { animation: bottleGlow 0.9s ease-in-out 2; }
+  @keyframes bottleGlow {
+    0%, 100% {  }
+    50% {  }
+  }
+  .quiz-choice.flying img { transition: transform 0.5s cubic-bezier(0.4,0,0.7,1), opacity 0.5s ease; }
+  #quizResult.pop-in { animation: resultPop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes resultPop {
+    0% { opacity: 0; transform: scale(0.75); }
+    55% { opacity: 1; transform: scale(1.06); }
+    80% { transform: scale(0.98); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  .quiz-archetype-card {
+    text-align: center; padding: 26px 20px; margin: 4px 0 20px; border-radius: 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+  }
+  .quiz-archetype-emoji { font-size: 2.6rem; display: block; margin-bottom: 4px; }
+  .quiz-archetype-name {
+    margin: 0 0 8px; font-size: 1.4rem; font-weight: 800; line-height: 1.3;
+    background: var(--surface); -webkit-background-clip: text;
+    background-clip: text; color: transparent;
+  }
+  .quiz-archetype-desc { margin: 0; color: var(--ink2); font-size: 0.84rem; line-height: 1.5; }
+  .quiz-share-btn {
+    display: block; width: 100%; margin: 4px 0 22px; padding: 12px; border-radius: 12px;
+    border: 1px solid var(--rule); background: var(--rule);
+    color: var(--accent); font-weight: 700; font-size: 0.88rem; cursor: pointer; font-family: inherit;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .quiz-share-btn:hover { background: var(--rule); border-color: var(--rule); }
+  .quiz-share-btn:disabled { opacity: 0.55; cursor: default; }
+  .param-card {
+    margin-bottom: 24px; padding: 16px 18px; border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+  }
+  .param-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .param-row:last-of-type { margin-bottom: 0; }
+  .param-label { width: 88px; flex-shrink: 0; font-size: 0.82rem; color: var(--ink2); white-space: nowrap; }
+  .param-bar { flex: 1; height: 6px; border-radius: 999px; background: var(--rule); overflow: hidden; }
+  .param-fill {
+    height: 100%; border-radius: 999px; position: relative; overflow: hidden;
+  }
+  /* 채워진 맛 막대 위로 하이라이트가 위스키 잔 속 술처럼 찰랑이며 흐르는 효과 */
+  .param-fill::after {
+    content: ''; position: absolute; inset: 0;
+    background: var(--surface) 45%, transparent 90%);
+    background-size: 60px 100%; background-repeat: repeat-x;
+    animation: wave-flow 2.4s linear infinite;
+  }
+  /* 잔잔한 금빛 선 - 사이드 조명처럼 은은하게 밝기만 오르내림 (예전의 물결 애니메이션 대신) */
+  .gold-wave {
+    height: 2px; margin: 18px 0 26px 0; border-radius: 999px;
+    background: var(--surface) 12%, rgba(253,230,138,0.95) 50%, var(--surface) 88%, transparent 100%);
+    box-shadow: 0 0 10px 1px var(--surface);
+    animation: gold-glow 4.5s ease-in-out infinite;
+  }
+  @keyframes gold-glow {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+  }
+  @keyframes wave-flow {
+    from { background-position-x: 0; }
+    to { background-position-x: -200px; }
+  }
+  .param-score { width: 30px; flex-shrink: 0; text-align: right; font-size: 0.78rem; color: var(--mute); }
+  .param-caption { margin: 12px 0 0 0; font-size: 0.7rem; color: var(--mute); }
+  .note-block { margin-bottom: 14px; padding: 14px 16px; border-radius: 10px; background: var(--rule); border: 1px solid var(--rule); }
+  .note-label { color: var(--accent); font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .note-text { line-height: 1.6; font-size: 0.92rem; }
+  .source-note { color: var(--mute); font-size: 0.72rem; margin-top: 24px; }
+  .source-note a { color: var(--mute); }
+  .back-link { display: inline-block; margin-bottom: 20px; color: var(--ink2); text-decoration: none; font-size: 0.85rem; }
+  .share-btn {
+    display: block; width: 100%; margin-top: 10px; padding: 14px;
+    border-radius: 12px; border: 1px solid var(--rule);
+    background: var(--surface); color: var(--accent); font-weight: 700;
+    font-size: 0.95rem; cursor: pointer; font-family: inherit;
+  }
+  .share-btn:active { background: var(--surface); }
+  .auth-widget { position: fixed; top: 14px; right: 14px; z-index: 50; display: flex; align-items: center; gap: 6px; }
+  .auth-provider-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 50%;
+    font-size: 1.05rem; font-weight: 800; text-decoration: none; line-height: 1;
+    
+  }
+  .auth-provider-btn.kakao { background: #FEE500; }
+  .auth-provider-btn.google { background: #FFFFFF; border: 1px solid rgba(0,0,0,0.1); }
+  .auth-provider-btn.naver { background: #03C75A; color: #FFFFFF; font-size: 1.15rem; }
+  .auth-user-badge {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px;
+    background: rgba(10,9,8,0.8); border: 1px solid var(--rule);
+    font-size: 0.76rem; color: var(--ink2); backdrop-filter: blur(4px);
+  }
+  .auth-user-badge button {
+    background: none; border: none; color: var(--mute); font-size: 0.74rem;
+    cursor: pointer; font-family: inherit; text-decoration: underline; padding: 0;
+  }
+  .fav-btn {
+    display: inline-block; margin-top: 8px; padding: 7px 14px; border-radius: 999px;
+    border: 1px solid var(--rule); background: var(--rule);
+    color: var(--accent); font-weight: 700; font-size: 0.8rem; cursor: pointer; font-family: inherit;
+  }
+  .fav-btn.is-favorited { background: rgba(220,38,38,0.15); border-color: rgba(220,38,38,0.4); color: #FCA5A5; }
+  .rank-tab-bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 20px; }
+  .rank-tab {
+    padding: 8px 16px; border-radius: 999px; border: 1px solid var(--rule);
+    background: var(--surface); color: var(--ink2); font-weight: 700; font-size: 0.85rem;
+    cursor: pointer; font-family: inherit; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .rank-tab.active { background: var(--surface); color: var(--surface); border-color: transparent; }
+
+  /* ===== 2026-09-23 새 디자인 언어: 공통 컴포넌트 (뒤에 있어 위 규칙을 덮는다) ===== */
+  h1 { font-family: var(--serif); font-weight: 700; font-size: 1.7rem; line-height: 1.3; letter-spacing: -0.01em;
+       background: none; -webkit-background-clip: initial; background-clip: initial; color: var(--ink); text-wrap: balance; margin: 0 0 6px; }
+  h2, .sec-title { font-family: var(--sans); }
+  .subtitle { color: var(--ink2); font-size: 0.92rem; margin-bottom: 22px; }
+  .tagline { color: var(--ink2); font-weight: 500; }
+  .section-label {
+    display: flex; align-items: baseline; justify-content: space-between; border-left: 0; padding: 0 0 6px;
+    margin: 32px 0 4px; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; color: var(--ink);
+    border-bottom: 1px solid var(--ink);
+  }
+  .section-label-sub { border-bottom-color: var(--rule); color: var(--mute); }
+  .hot-caption, .sec-cap, .form-hint { color: var(--mute); font-size: 0.78rem; }
+  .site-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+                 padding: 22px 0 12px; margin-bottom: 0; border-bottom: 1px solid var(--ink); }
+  .site-brand, h1.site-brand { font-family: var(--serif); font-weight: 700; font-size: 1.35rem; margin: 0; color: var(--ink); }
+  .site-brand-en { font-family: var(--sans); font-weight: 500; font-size: 0.66rem; color: var(--mute); letter-spacing: 0.14em; margin-left: 8px; }
+  .site-header-login-label { color: var(--mute); }
+  .site-nav { display: flex; gap: 16px; font-size: 0.86rem; color: var(--ink2); overflow-x: auto; white-space: nowrap;
+              padding: 10px 0 0; border-bottom: 1px solid var(--rule); margin-bottom: 8px; }
+  .site-nav::-webkit-scrollbar { display: none; }
+  .site-nav a { color: var(--ink2); text-decoration: none; padding-bottom: 8px; }
+  .site-nav a.on { color: var(--ink); font-weight: 700; border-bottom: 2px solid var(--accent); margin-bottom: -1px; }
+  .quick-nav { display: none; }
+  .hero-line { font-family: var(--serif); font-weight: 700; font-size: 1.55rem; line-height: 1.3; color: var(--ink); margin: 26px 0 4px; text-wrap: balance; }
+  .hero-line strong { color: var(--accent); font-weight: 700; }
+  .hero-date { color: var(--mute); font-size: 0.8rem; margin: 0 0 14px; }
+  .hero-feedback { color: var(--accent); }
+  .cta, .share-btn, .gen-btn, .photo-pick-btn, .hero-board-btn, .copy-deal-btn, .gift-mode-btn, .board-verify-btn {
+    background: var(--btn); color: var(--btn-ink); border: 0; border-radius: 6px; font-weight: 700; box-shadow: none; filter: none;
+  }
+  .cta { display: block; text-align: center; padding: 12px 18px; font-size: 0.95rem; margin-top: 14px; text-decoration: none; }
+  .share-btn { display: block; width: 100%; padding: 11px 16px; margin-top: 8px; font-size: 0.9rem; font-family: inherit; cursor: pointer;
+               background: transparent; color: var(--ink); border: 1px solid var(--ink); }
+  .hero-board-btn { display: block; padding: 13px 16px; margin: 6px 0 4px; text-decoration: none; }
+  .hero-board-title { color: var(--btn-ink); font-size: 0.98rem; }
+  .hero-board-desc { color: rgba(246,241,232,0.75); font-size: 0.76rem; }
+  .rank-row, .hot-row, .mover, .home-deal-row, .board-feed-row, .store-row, .recent-price-row, .explore-card, .gift-card,
+  .release-row, .event-row, .post-row, .yt-row, .channel-price-card, .price-box, .board-write-form, .board-verify-ask, .daily-row {
+    background: transparent; border: 0; border-bottom: 1px solid var(--rule); border-radius: 0; box-shadow: none; padding-left: 0; padding-right: 0; margin-bottom: 0;
+  }
+  .rank-row, .hot-row { padding: 10px 0; gap: 12px; }
+  .rank-thumb-wrap, .gift-thumb-wrap { background: transparent; box-shadow: none; border-radius: 6px; }
+  .rank-num { font-family: var(--serif); color: var(--accent); font-size: 1rem; }
+  .rank-bar { display: none; }
+  .home-deal-row, .board-feed-row, .daily-row { padding: 11px 0; }
+  .home-deal-name, .board-feed-name, .daily-name, .store-name, .mover-name { color: var(--ink); font-weight: 600; }
+  .home-deal-right b, .board-feed-price, .daily-price, .store-price, .price-range { color: var(--ink); font-weight: 700; }
+  .home-deal-right em, .board-feed-sub, .daily-sub { color: var(--down); font-style: normal; }
+  .board-feed-sub, .daily-sub { color: var(--mute); }
+  .board-feed-more, .sec-more { color: var(--accent); }
+  .channel-discount { background: transparent; color: var(--down); font-weight: 700; padding: 0; border: 0; }
+  .channel-discount.tier0 { color: var(--mute); }
+  .channel-price-label { color: var(--ink); font-weight: 700; font-size: 0.8rem; letter-spacing: 0.06em; }
+  .channel-row { border-top: 1px solid var(--rule); }
+  .explore-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
+  .explore-card { padding: 12px 0; border-radius: 0; }
+  .explore-title { color: var(--ink); font-weight: 700; }
+  .explore-desc { color: var(--mute); }
+  .price-box { padding: 14px 0; }
+  .price-range { font-family: var(--serif); font-size: 1.6rem; }
+  .price-range-caption { color: var(--mute); }
+  .price-buy-link { color: var(--accent); background: transparent; border: 1px solid var(--rule); padding: 8px 12px; border-radius: 6px; display: inline-block; margin-top: 8px; text-decoration: none; }
+  .fav-btn { background: transparent; color: var(--ink); border: 1px solid var(--ink); border-radius: 999px; }
+  .wf-input, input.wf-input, select.wf-input, textarea.wf-input { background: #fff; color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; }
+  .wf-input::placeholder { color: var(--mute); }
+  .board-store-chip { background: transparent; border: 1px solid var(--rule); color: var(--ink2); border-radius: 999px; }
+  .board-store-chip.selected { background: var(--btn); color: var(--btn-ink); border-color: var(--btn); }
+  .board-category-toggle button { background: transparent; border: 1px solid var(--rule); color: var(--ink2); }
+  .board-category-toggle button.selected { background: var(--btn); color: var(--btn-ink); border-color: var(--btn); }
+  .board-notice-badge { background: var(--accent); color: #fff; }
+  .board-row td, .board-row-title-text { color: var(--ink); }
+  .board-row:hover { background: var(--surface); }
+  .board-table thead th { background: transparent; color: var(--mute); border-bottom: 1px solid var(--ink); }
+  .board-table-wrap { border: 0; border-radius: 0; }
+  .board-detail-box { background: var(--paper); border: 1px solid var(--rule); box-shadow: 0 12px 40px rgba(30,25,19,0.25); }
+  .board-detail-overlay { background: var(--overlay); }
+  .board-comment-row.is-verification { color: var(--down); }
+  .fb-fab { background: var(--btn); color: var(--btn-ink); border: 0; box-shadow: 0 4px 14px rgba(30,25,19,0.2); }
+  .site-footer, footer { color: var(--mute); border-top: 1px solid var(--rule); }
+  .site-footer a, footer a { color: var(--ink2); }
+  .live-dot { background: var(--down); }
+  .mover-badge, .rank-badge, .up-badge, .board-row-cat-badge { background: transparent; color: var(--down); border: 0; padding: 0; font-weight: 700; }
+  .board-row-cat-badge.free { color: var(--mute); }
+  .auth-provider-btn { box-shadow: none; }
+  ::selection { background: #E9D7B5; }
+  /* 두 클래스짜리 옛 규칙(.tierN, .active)은 특이도가 높아 위 오버라이드를 이긴다 - 같은 특이도로 다시 덮는다 */
+  .channel-discount.tier0, .channel-discount.tier1, .channel-discount.tier2, .channel-discount.tier3, .channel-discount.tier4,
+  .channel-discount.up, .channel-discount.down { background: transparent; color: var(--down); box-shadow: none; padding: 0; font-weight: 700; }
+  .channel-discount.tier0, .channel-discount.down { color: var(--mute); }
+  .rank-tab, .home-tab { background: transparent; border: 1px solid var(--rule); color: var(--ink2); border-radius: 999px; }
+  .rank-tab.active, .home-tab.active { background: var(--btn); color: var(--btn-ink); border-color: var(--btn); }
+  .seo-h2 { border-left: 0; border-bottom: 1px solid var(--ink); padding: 0 0 6px; margin: 32px 0 10px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; }
+  .copy-deal-btn { background: transparent; color: var(--ink2); border: 1px solid var(--rule); font-size: 0.78rem; }
+  .related-card { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; }
+  /* 장부(ledger): 홈 시세판·시세판 페이지·일간 글 공용. 카드가 아니라 가는 줄로 나눈 표 */
+  .ledger { display: block; }
+  .ledger-row { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--rule); align-items: baseline; text-decoration: none; color: inherit; }
+  .ledger-name { font-weight: 600; font-size: 0.98rem; color: var(--ink); min-width: 0; }
+  .ledger-store { display: inline-block; font-size: 0.72rem; font-weight: 700; color: var(--accent); margin-right: 6px; letter-spacing: 0.02em; }
+  .ledger-meta { grid-column: 1; font-size: 0.78rem; color: var(--mute); margin-top: 2px; }
+  .ledger-price { grid-column: 2; grid-row: 1 / span 2; font-size: 1.1rem; font-weight: 700; text-align: right; align-self: center; color: var(--ink); }
+  .ledger-price small { display: block; font-size: 0.7rem; font-weight: 600; color: var(--down); }
+
+  /* ---- 홈 = 위스키베이스식 차트(2026-09-23, docs/design-benchmark-ranking-sites.md) ---- */
+  .wrap.chart-home { max-width: 960px; }
+  .chart-header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .chart-header .site-brand { flex: none; }
+  .site-search { flex: 1 1 260px; display: flex; align-items: center; border: 1px solid var(--rule); background: var(--surface);
+    border-radius: 6px; height: 36px; padding: 0 10px; color: var(--mute); min-width: 0; }
+  .site-search input { border: 0; background: transparent; flex: 1; font: inherit; font-size: 0.9rem; color: var(--ink); outline: none; min-width: 0; }
+  .site-search input::placeholder { color: var(--mute); }
+  .site-search kbd { font: 11px var(--sans); border: 1px solid var(--rule); border-radius: 4px; padding: 1px 5px; color: var(--mute); }
+  .chart-head { padding: 18px 0 12px; }
+  .chart-meta { font-size: 0.8rem; color: var(--mute); }
+  .chart-meta b { color: var(--ink2); font-weight: 500; }
+  .chart-meta a { color: var(--mute); text-decoration: underline; text-underline-offset: 3px; }
+  .chart-title { font-family: var(--serif); font-size: 1.6rem; line-height: 1.3; margin: 4px 0 8px; color: var(--ink); word-break: keep-all; }
+  .chart-title .badge { font: 600 11px var(--sans); background: var(--btn); color: var(--btn-ink); padding: 2px 7px; border-radius: 3px; vertical-align: middle; margin-left: 8px; white-space: nowrap; }
+  .chart-desc { color: var(--ink2); font-size: 0.92rem; max-width: 64ch; margin: 0; word-break: keep-all; }
+  .chart-desc a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+  .chart-chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 8px; }
+  .chart-chip { font-size: 0.84rem; padding: 6px 12px; border: 1px solid var(--rule); border-radius: 20px; background: var(--surface); color: var(--ink2); white-space: nowrap; text-decoration: none; }
+  .chart-chip .chip-n { color: var(--mute); font-size: 0.78rem; margin-left: 2px; }
+  .chart-chip.on { background: var(--btn); color: var(--btn-ink); border-color: var(--btn); }
+  .chart-chip.on .chip-n { color: var(--btn-ink); opacity: .7; }
+  .chart-toolbar { display: flex; align-items: center; justify-content: space-between; margin: 6px 0 12px; font-size: 0.8rem; color: var(--mute); }
+  .view-toggle { display: inline-flex; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+  .view-toggle button { font: 12px var(--sans); background: var(--surface); border: 0; padding: 5px 10px; color: var(--ink2); cursor: pointer; }
+  .view-toggle button.on { background: var(--btn); color: var(--btn-ink); }
+  .wlist { display: flex; flex-direction: column; gap: 8px; }
+  .wcard[hidden], .gcard[hidden] { display: none !important; }
+  .wcard { display: grid; grid-template-columns: 64px 1fr auto; gap: 14px; align-items: center; background: var(--surface); border: 1px solid var(--rule);
+    border-radius: 4px; padding: 10px 14px 10px 10px; text-decoration: none; color: var(--ink); }
+  .wcard:hover { border-color: var(--mute); }
+  .wbottle { width: 64px; height: 84px; display: flex; align-items: center; justify-content: center; }
+  .wthumb { max-width: 64px; max-height: 84px; width: auto; height: auto; object-fit: contain; }
+  .wtitle { font-size: 1.02rem; font-weight: 700; line-height: 1.3; word-break: keep-all; }
+  .wtitle .no { color: var(--ink2); font-weight: 600; margin-right: 6px; }
+  .wtitle .en { font-weight: 400; color: var(--mute); font-size: 0.82rem; margin-left: 8px; }
+  .wtitle .tag { display: inline-block; font-size: 10.5px; font-weight: 600; padding: 1px 6px; border: 1px solid var(--down); color: var(--down); border-radius: 3px; margin-left: 6px; vertical-align: 2px; }
+  .wfacts { font-size: 0.8rem; color: var(--ink2); margin-top: 5px; display: flex; flex-wrap: wrap; gap: 2px 0; }
+  .wfacts span { white-space: nowrap; }
+  .wfacts span:not(:last-child)::after { content: "·"; color: var(--rule); margin: 0 7px; }
+  .wfacts .score { color: var(--ink); font-weight: 700; }
+  .wfacts .score::before { content: "★ "; color: var(--accent); }
+  .wfacts .chg { font-weight: 600; } .wfacts .chg.up { color: var(--warn); } .wfacts .chg.dn { color: var(--down); }
+  .wfacts .chg.new { color: var(--accent); } .wfacts .chg.flat { color: var(--mute); font-weight: 400; }
+  .wprices { text-align: right; white-space: nowrap; }
+  .wprices .p { font-size: 1.02rem; font-weight: 700; color: var(--ink); }
+  .wprices .p small { font-size: 0.72rem; color: var(--mute); font-weight: 400; margin-right: 6px; }
+  .wprices .low { font-size: 0.78rem; color: var(--ink2); margin-top: 3px; }
+  .wprices .low b { color: var(--down); }
+  .wprices .muted { color: var(--mute); font-weight: 400; font-size: 0.78rem; }
+  .wgrid { display: none; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .gcard { background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; padding: 14px 12px; text-align: center; text-decoration: none; color: var(--ink); }
+  .gcard .wbottle { margin: 0 auto 8px; }
+  .gcard .gno { font-size: 0.78rem; color: var(--mute); }
+  .gcard .gt { font-weight: 700; font-size: 0.9rem; line-height: 1.3; word-break: keep-all; }
+  .gcard .gs { font-size: 0.78rem; color: var(--ink2); margin-top: 4px; }
+  body.grid-on .wlist { display: none; } body.grid-on .wgrid { display: grid; }
+  .chart-home #chart-more { margin: 14px auto 6px; display: block; }
+  .chart-home .sec-head { margin-top: 30px; }
+  .chart-note { font-size: 0.74rem; color: var(--mute); margin-top: 26px; max-width: 70ch; }
+  @media (max-width: 640px) {
+    .chart-header { gap: 10px; }
+    .chart-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
+    .site-search { order: 3; flex-basis: 100%; }
+    .wcard { grid-template-columns: 48px 1fr; padding: 10px; gap: 10px; }
+    .wbottle { width: 48px; height: 70px; } .wthumb { max-width: 48px; max-height: 70px; }
+    .wtitle { font-size: 0.95rem; } .wtitle .en { display: none; }
+    .wprices { grid-column: 2; text-align: left; white-space: normal; display: flex; gap: 10px; align-items: baseline; margin-top: 2px; flex-wrap: wrap; }
+    .wprices .p { font-size: 0.95rem; } .wprices .low { margin: 0; }
+    .wgrid { grid-template-columns: repeat(2, 1fr); }
+    .chart-title { font-size: 1.35rem; }
+  }
+
+  /* ---- 호불호 블록 (2026-09-24) ---- */
+  .verdict { margin: 22px 0 8px; }
+  .verdict-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .verdict-col { background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; padding: 10px 12px; }
+  .verdict-col p { margin: 4px 0 0; font-size: 0.95rem; line-height: 1.5; word-break: keep-all; color: var(--ink); }
+  .verdict-head { font-size: 0.72rem; font-weight: 700; letter-spacing: .04em; color: var(--mute); }
+  .verdict-col.good .verdict-head { color: var(--down); } .verdict-col.bad .verdict-head { color: var(--warn); }
+  .verdict-by { font-size: 0.76rem; color: var(--mute); margin: 6px 0 0; }
+  .verdict-cols.owner { margin-top: 10px; }
+  .verdict-refs { font-size: 0.72rem; color: var(--mute); white-space: nowrap; }
+  .verdict-refs a { color: var(--accent); text-decoration: none; margin-left: 3px; border-bottom: 1px dotted var(--accent); }
+  .verdict-signal { font-size: 0.86rem; color: var(--ink2); margin: 12px 0 6px; }
+  .verdict-signal b { color: var(--ink); font-weight: 600; }
+  @media (max-width: 640px) { .verdict-cols { grid-template-columns: 1fr; } }
+
+
+  .wrap.chart-home { max-width: 960px; }
+  #travel-map { height: 62vh; min-height: 360px; border: 1px solid var(--rule); border-radius: 4px; background: var(--surface); margin: 10px 0 16px; }
+  .map-pin span { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: var(--btn); color: var(--btn-ink); font: 700 12px var(--sans); border: 2px solid var(--paper); box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  .leaflet-popup-content { font: 13px/1.45 var(--sans); } .leaflet-popup-content em { font-style: normal; color: var(--down); font-size: 11px; }
+  .stop { display: grid; grid-template-columns: 30px 1fr; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+  .stop-no { width: 26px; height: 26px; border-radius: 50%; background: var(--btn); color: var(--btn-ink); font: 700 12px var(--sans); display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+  .stop-name { font-weight: 700; font-size: 1rem; word-break: keep-all; }
+  .stop-name .tag { display: inline-block; font-size: 10.5px; font-weight: 600; padding: 1px 6px; border: 1px solid var(--down); color: var(--down); border-radius: 3px; margin-left: 6px; vertical-align: 2px; }
+  .stop-meta { font-size: .78rem; color: var(--mute); margin-top: 2px; }
+  .stop-items { margin: 6px 0 0; font-size: .92rem; color: var(--ink); word-break: keep-all; }
+  .stop-price { margin: 4px 0 0; font-size: .9rem; font-weight: 600; color: var(--accent); }
+  .stop-tip { margin: 4px 0 0; font-size: .84rem; color: var(--ink2); word-break: keep-all; }
+  .stop-links { margin-top: 6px; font-size: .78rem; color: var(--mute); } .stop-links a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+</style>
+</head>
+<body>
+  <div class="wrap home chart-home">
+    <header class="site-header"><div class="site-brand"><a href="/">위스키핫 <span class="site-brand-en">WHISKY HOT</span></a></div><div class="site-header-auth"><span class="site-header-login-label">로그인</span><div id="auth-widget" class="auth-widget"></div></div></header><nav class="site-nav" aria-label="주요 메뉴"><a href="/board.html">게시판</a><a href="/rankings.html">랭킹</a><a href="/deals.html">특가</a><a href="/store-prices.html">매장</a><a href="/duty-free.html">면세</a><a href="/food-pairing.html">취향</a><a href="/my-note.html">노트</a><a href="/restaurants.html">맛집</a></nav>
+    <div class="chart-head">
+      <div class="chart-meta"><b>위스키핫</b> · 2026-09-29 기준 · 매장 22곳</div>
+      <h1 class="chart-title">해외 리쿼샵 지도 <span class="badge">베타</span></h1>
+      <p class="chart-desc">지역을 고르면 공항·면세점부터 가까운 순으로 번호를 매겨 점선으로 이어줍니다. 실제 길찾기는 매장의 "구글지도"를 누르세요. 값은 출처 글의 예시라 환율·시기에 따라 다릅니다. 다녀오신 값은 <a href="/board.html">게시판</a>에 올려주세요.</p>
+    </div>
+    <div class="chart-chips"><a class="chart-chip on" href="#" data-group="베트남 나트랑">베트남 나트랑 <span class="chip-n">5</span></a><a class="chart-chip" href="#" data-group="대만 타이베이">대만 타이베이 <span class="chip-n">9</span></a><a class="chart-chip" href="#" data-group="일본 도쿄">일본 도쿄 <span class="chip-n">5</span></a><a class="chart-chip" href="#" data-group="일본 오사카">일본 오사카 <span class="chip-n">3</span></a></div>
+    <div id="travel-map"></div>
+    <div id="route-list"></div>
+    <p class="chart-note">한국 입국 주류 면세는 합계 2L 이하·US$400 이하(병 수 제한 없음, 2025년 3월부터). 700ml 두 병까지가 안전합니다. 자세한 환급·면세 조건은 <a href="/duty-free.html">면세 가이드</a>에.</p>
+    <footer class="site-footer">
+      <div class="site-footer-brand">위스키핫 WHISKY HOT</div>
+      <p><a href="/">홈</a> &middot; <a href="/duty-free.html">면세 가이드</a> &middot; <a href="/board.html">게시판</a></p>
+    </footer>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script>window.WHISKY_SHOPS = [{"group": "베트남 나트랑", "name": "Lotte Duty Free Cam Ranh (롯데면세점 깜란공항점)", "area": "깜란국제공항 (나트랑 시내에서 차로 약 40~50분, 소요시간은 미확인)", "address": "Cam Ranh International Airport 국제선 터미널 출국장(1,507㎡)·입국장(173㎡)", "lat": 11.998251, "lng": 109.217377, "duty_free": true, "selection": "주류·담배 취급 확인(면세점 운영사 발표). 위스키 브랜드 라인업과 가격은 아직 확인 못 함 - 다녀오신 분 제보 환영", "price": "", "tip": "롯데면세점이 2028년 중반까지 10년 독점 운영. 한국경제 2018 기사(검색결과)에 따르면 한국어 가능 직원 상주 (최신 여부 미확인). 위스키갤러리 2024-04 후기 사진은 있으나 가격 판독 불가", "source": "https://moodiedavittreport.com/chinese-and-russian-business-key-to-success-as-lotte-duty-free-opens-at-cam-ranh-international-airport-in-vietnam/", "verified": "2026-09-24"}, {"group": "베트남 나트랑", "name": "LOTTE Mart Nha Trang (롯데마트 나트랑점)", "area": "나트랑 시내 서쪽 (23/10 거리), 07:30~22:00", "address": "Số 58, Đường 23/10, Phường Tây Nha Trang, Tỉnh Khánh Hòa", "lat": 12.248082, "lng": 109.195159, "duty_free": false, "selection": "블라인드 후기(2025-05)에 시바스리갈 12년·18년 판매 언급. 그 외 라인업은 확인 안 됨", "price": "시바스리갈 12년 700ml 5만원대, 시바스리갈 18년 약 9만7천원 (블라인드 후기 2025-05 기준, 원화 환산가)", "tip": "블라인드 후기 댓글: 시바스 18년은 국내 면세점이 더 쌈. 베트남에선 글렌알라키가 '국룰'이라는 의견 → 롯데마트 가격은 국내와 꼭 비교", "source": "https://www.teamblind.com/kr/post/%EB%82%98%ED%8A%B8%EB%9E%91-%EB%A1%AF%EB%8D%B0%EB%A7%88%ED%8A%B8-%EC%9C%84%EC%8A%A4%ED%82%A4-%EA%B0%80%EA%B2%A9-%EB%B4%90%EC%A4%98-Ex42DEto", "verified": "2026-09-24"}, {"group": "베트남 나트랑", "name": "WINECELLAR.vn Nha Trang (와인셀러 나트랑점)", "area": "시내 하이바쯩 거리, 월~토 08:00~21:00 / 일 08:00~19:30, 전화 093 508 9768", "address": "Số 15 Hai Bà Trưng, Phường Nha Trang, Tỉnh Khánh Hoà", "lat": 12.252375, "lng": 109.19331, "duty_free": false, "selection": "싱글몰트·블렌디드 위스키 취급: GlenAllachie, Tamdhu, Glengoyne, Kilchoman, Glen Moray, Rosebank, Hunter Laing, Cadenhead's, MacNair's (공식 페이지)", "price": "글렌알라키 15년 셰리 2,365,000 VND (whisky.vn 2026 기사 인용, 실판매가 재확인 필요)", "tip": "2,000종 이상 취급, VAT 영수증 발행 (whisky.vn 2026 기사). 주류는 베트남 관광객 VAT 환급 대상이 아니라는 안내(트립닷컴)가 있으니 환급 기대 말 것", "source": "https://winecellar.vn/cua-hang-ruou-vang-winecellar-vn-nha-trang/", "verified": "2026-09-24"}, {"group": "베트남 나트랑", "name": "WeWine Nha Trang (whisky.vn 기사에는 'Nha Trang Da Loc Wine'으로 표기, 동일 주소)", "area": "관광 중심가 응우옌티엔투엇 거리, 08:30~20:30 연중무휴, 전화 +84 396-539-075", "address": "147 Nguyễn Thiện Thuật, Lộc Thọ, Nha Trang", "lat": 12.236264, "lng": 109.193704, "duty_free": false, "selection": "Cognac, Armagnac, Whisky, Gin, Rum, Vodka 취급 (chamkhanhhoa 소개). 위스키 브랜드 상세는 확인 안 됨", "price": "", "tip": "", "source": "https://chamkhanhhoa.com/the-top-5-wine-shop-in-nha-trang-city/", "verified": "2026-09-24"}, {"group": "베트남 나트랑", "name": "Thu Ha Nha Trang (투하 주류)", "area": "시내 응오자뜨 거리, 07:30~20:30 매일, 전화 0258 3510 535", "address": "40-42 Ngô Gia Tự, Nha Trang", "lat": 12.239039, "lng": 109.18713, "duty_free": false, "selection": "Chivas, Macallan, Johnnie Walker 위스키 + 코냑·진·럼·보드카·리큐르 (chamkhanhhoa 소개)", "price": "", "tip": "", "source": "https://chamkhanhhoa.com/the-top-5-wine-shop-in-nha-trang-city/", "verified": "2026-09-24"}, {"group": "대만 타이베이", "name": "Kavalan Distillery (金車噶瑪蘭威士忌酒廠, 카발란 증류소 기념품샵)", "area": "이란(宜蘭)역에서 택시 약 15분, 매일 09:00~18:00, 무료 주차", "address": "No. 326, Sec. 2, Yuanshan Rd, Yuanshan Township, Yilan County (宜蘭縣員山鄉員山路二段326號)", "lat": 24.714204, "lng": 121.689591, "duty_free": false, "selection": "기념품샵에 카발란 위스키·굿즈 상시 판매, DIY 블렌딩 300ml 병(기프트박스) 구매 가능 (taiwanderers 2026). 증류소 한정 보틀 여부는 명시 안 됨", "price": "시음 10ml당 NT$100~200, 프리미엄 웨어하우스 시음 NT$1,500~2,000, DIY 블렌딩 300ml NT$1,800 (taiwanderers 2026). 병 소매가는 소스에 없음", "tip": "2026-03-01부터 입장료 NT$200(노인·학생·이란 주민 NT$100, 12세 미만 무료). 트립어드바이저 포럼: 증류소 가격이 타이베이 마트보다 싸진 않고 선택폭·시음이 장점", "source": "https://taiwanderers.com/kavalan-whisky-distillery-yilan/", "verified": "2026-09-24"}, {"group": "대만 타이베이", "name": "KAVALAN Taipei 101 Concept Store (噶瑪蘭 101概念店)", "area": "MRT 타이베이101/세계무역센터역 → 101 지하1층 직결", "address": "B1, No. 45, City Hall Rd, Xinyi District, Taipei (台北市信義區市府路45號B1)", "lat": 25.033835, "lng": 121.564499, "duty_free": false, "selection": "카발란 싱글몰트, 대만 한정 스페셜 에디션, 시음 플라이트·샘플러 (corner.inc·taipeitourism 검색결과, 페이지 직접 열람은 429로 실패)", "price": "", "tip": "", "source": "https://www.corner.inc/place/425275", "verified": "2026-09-24"}, {"group": "대만 타이베이", "name": "Ever Rich Duty Free (昇恆昌免稅商店) 타오위안공항 T1·T2 주류점", "area": "타오위안국제공항, T2 출국장 06:00~23:30", "address": "桃園國際機場 第一航廈 1F(입국)·3F(출국), 第二航廈 3F(출국) '菸酒、巧克力' 매장 (xinmedia 2024-12)", "lat": 25.079317, "lng": 121.234598, "duty_free": true, "selection": "맥캘런 공항 플래그십 매장(1shot.tw 2025-11), 카발란 부티크(타이베이 시내점 기준, Moodie Davitt 2025-11), 독립병입 Douglas Laing (酒訊網 검색결과). 온라인 카탈로그 226개 위스키", "price": "카발란 Rhythm of Taiwan 'Ocean' 700ml NT$3,850 (2025-11 Moodie Davitt, 昇恆昌 독점)", "tip": "출발 45일 전~24시간 전 온라인 예약 후 출국 시 결제·수령 (xinmedia). 면세품은 대만 관광객 세금환급 대상 아님", "source": "https://moodiedavittreport.com/everrich-duty-free-exclusively-debuts-latest-kavalan-single-malt/", "verified": "2026-09-24"}, {"group": "대만 타이베이", "name": "Tasa Meng Duty Free (采盟免稅店) 타오위안공항 T2", "area": "타오위안국제공항 T2", "address": "桃園國際機場 第二航廈 (서비스센터 2F 입국구역, xinmedia 2024-12)", "lat": 25.079317, "lng": 121.234598, "duty_free": true, "selection": "카발란 취급 (采盟 브랜드 페이지). 구체 라인업·가격은 확인 안 됨", "price": "", "tip": "출국 시 구매 후 귀국 때 수령하는 보관 서비스 제공 (xinmedia 2024-12)", "source": "https://dutyfree.tasameng.com.tw/brand.php?act=view&id=213", "verified": "2026-09-24"}, {"group": "대만 타이베이", "name": "珈品洋酒 (자핀양주, 영캉제 한국인 줄 서는 곳)", "area": "MRT 둥먼(東門)역 영캉제 상권", "address": "台北市大安區永康街42號之5, 1F, 전화 02-2357-8772", "lat": 25.032464, "lng": 121.52973, "duty_free": false, "selection": "좁은 공간에 위스키가 빽빽, 시음 가능, 많이 사면 서비스 (임볼든 2024-04). 카발란·로얄살루트 등 (壹蘋新聞 2025-03)", "price": "카발란 NT$2,900(한국 NT$8,000 상당), 로얄살루트 21년 NT$2,300 (壹蘋新聞 2025-03 기사 인용, 어떤 카발란 제품인지 미상·현재가 재확인 필요)", "tip": "대만은 위스키 수입관세 0%·영업세 5%뿐이라 한국 대비 최대 3배 저렴 (壹蘋新聞 2025-03). 재고는 페이스북으로 실시간 확인 가능(임볼든)", "source": "https://news.nextapple.com/life/20250325/C402C96D5D93582BF3CA2BF527D80ECD", "verified": "2026-09-24"}, {"group": "대만 타이베이", "name": "酒條通洋酒 (지우탸오퉁, 전국 최대 양주 체인)", "area": "-", "address": "본사 新北市汐止區南陽街120巷30號之3 (타이베이·신베이·타오위안·신주 매장, 개별 주소 미확인)", "lat": 25.061499, "lng": 121.621502, "duty_free": false, "selection": "글렌피딕 12년, 부캐넌 12년 1L NT$899, 니카 Frontier 500ml NT$599, 탐두 등 (공식 온라인몰 2026-09-24 열람)", "price": "글렌피딕 12년 700ml 회원가 NT$798 (정가 NT$998, 609.com.tw 2026-09-24 열람)", "tip": "포인트 적립 프로그램, 매주 금요일 시음 행사 (공식 사이트)", "source": "https://www.609.com.tw/Product/110087", "verified": "2026-09-24"}, {"group": "대만 타이베이", "name": "Costco Taiwan (코스트코 대만, 회원제)", "area": "-", "address": "대만 전역 (개별 매장 주소 미확인)", "lat": 25.06379, "lng": 121.575897, "duty_free": false, "selection": "Kavalan 噶瑪蘭調酒師精選(Blender's Select) 1L 매장 한정 판매 (공식 사이트, 가격 미표시). 트립어드바이저 포럼(2017): 카발란 클래식이 타이베이 마트에서 약 NT$1,000으로 면세점보다 쌌다는 후기", "price": "", "tip": "회원 카드 필요. 트립어드바이저 포럼: 카발란은 시내 마트가 증류소·면세점보다 저렴하다는 의견", "source": "https://www.costco.com.tw/Kavalan/c/Kavalan", "verified": "2026-09-24"}, {"group": "대만 타이베이", "name": "Carrefour Taiwan (까르푸 대만, 일부 24시간 점포)", "area": "-", "address": "대만 전역 (타이베이 개별 매장 주소 미확인)", "lat": 25.037907, "lng": 121.505861, "duty_free": false, "selection": "클리앙 후기(2024-03, 금문도점): 발베니 12년, 글렌피딕 12년 1L, 카발란 비노바리끄, 레드라벨 3L. 다음카페 후기(2024-02): 조니워커 15 셰리, 페이머스 그라우스 4.5L, 블랙라벨 3L", "price": "발베니 12년 NT$1,499, 글렌피딕 12년 1L 약 NT$1,800, 카발란 비노바리끄 700ml NT$3,200 (클리앙 2024-03, 금문도 까르푸 기준)", "tip": "32개 지정 브랜드 위스키 1천元당 100元 할인 행사 사례(經濟日報 검색결과). 환율은 대만달러×42 ≈ 원화 (클리앙 2024-03)", "source": "https://www.clien.net/service/board/park/18651732", "verified": "2026-09-24"}, {"group": "대만 타이베이", "name": "7-ELEVEN (세븐일레븐, 精品咖啡門市 한정)", "area": "-", "address": "대만 전역 CITY PRIMA 취급점", "lat": 25.047721, "lng": 121.517115, "duty_free": false, "selection": "카발란 珍選 No.1 싱글몰트 50ml 미니병 (라떼 세트, 2025-11~12 한정). 상시 위스키 진열은 확인 안 됨", "price": "CITY PRIMA 라떼 + 카발란 No.1 50ml 세트 NT$189 (聯合新聞網 2025-11-26, 12/9까지)", "tip": "기간 한정 프로모션이라 방문 시점에 없을 수 있음", "source": "https://udn.com/news/story/7270/9163796", "verified": "2026-09-24"}, {"group": "일본 도쿄", "name": "야마야(YAMAYA)", "area": "도쿄", "address": "", "lat": 35.686606, "lng": 139.69393, "duty_free": false, "selection": "신주쿠·이케부쿠로·시부야·긴자 등에 매장 - 수입 위스키 구색이 특히 넓음. 회원카드 가입 시 추가 할인, 5,000엔 이상 구매 시 매장에 따라 외국인 관광객 면세 가능(여권 지참 필수)", "price": "", "tip": "회원카드 할인 + 면세(5,000엔↑)는 중복 적용됨 - 위스키 전문점 중 실질 할인폭이 가장 큰 편", "source": "https://loop.day/magazine/japan-whisky-yamazaki-hakushu-hibiki-nikka-distillery-guide-2026", "verified": "2026-09-06"}, {"group": "일본 오사카", "name": "야마야(YAMAYA)", "area": "오사카", "address": "", "lat": 34.740992, "lng": 135.526929, "duty_free": false, "selection": "난바·우메다 등에 매장 - 도쿄점과 동일하게 5,000엔 이상 구매 시 면세 가능한 곳이 있음", "price": "", "tip": "회원카드 할인 + 면세(5,000엔↑) 중복 적용", "source": "https://loop.day/magazine/japan-whisky-yamazaki-hakushu-hibiki-nikka-distillery-guide-2026", "verified": "2026-09-06"}, {"group": "일본 오사카", "name": "울트라마켓(ウルトラマーケット)/울트라위스키", "area": "오사카(니혼바시)", "address": "", "lat": 34.659987, "lng": 135.506104, "duty_free": false, "selection": "오사카 나니와구 니혼바시 4초메 8-10 - 덴덴타운 인근 위스키 전문점. 한정판/재패니즈 위스키 구색이 좋고 시음도 가능해 뭘 살지 고르기 편함", "price": "", "tip": "일반 할인쿠폰보다는 희귀 한정판 구색 자체가 강점 - 시내 체인에 없는 병이 있는지 먼저 확인해볼 가치 있음", "source": "https://ultrawisky.com/", "verified": "2026-09-10"}, {"group": "일본 도쿄", "name": "돈키호테(ドン・キホーテ)", "area": "전국", "address": "", "lat": 35.693755, "lng": 139.701698, "duty_free": false, "selection": "관광지 상권 매장은 거의 전점 면세 카운터 운영(5,000엔 이상 구매 시) - 위스키 구색은 야마야보다 좁지만 산토리 각빈 등 저가 라인은 한국보다 훨씬 쌈(700ml 기준 약 1,500엔대)", "price": "", "tip": "⚠️ 매장 입구에서 나눠주는 5%/7% 관광객 할인쿠폰은 주류가 할인 제외 품목이라 위스키엔 적용 안 됨(Majica 카드 할인과도 중복 불가) - 위스키는 그냥 소비세 면세(5,000엔↑, 세금 제외 금액 기준)만 받는다고 생각하는 게 맞음", "source": "https://www.informaticsview.com/news/articleView.html?idxno=5310", "verified": "2026-09-10"}, {"group": "일본 도쿄", "name": "카쿠야스(カクヤス)", "area": "도쿄 중심", "address": "", "lat": 35.69132, "lng": 139.71067, "duty_free": false, "selection": "오프라인 매장보다 온라인/배송 위주 - 야마자키·하쿠슈 등 인기 재패니즈 위스키는 재고 있을 때 바로 사는 게 전략(품절 잦음)", "price": "", "tip": "", "source": "https://loop.day/magazine/japan-whisky-yamazaki-hakushu-hibiki-nikka-distillery-guide-2026", "verified": "2026-09-06"}, {"group": "일본 도쿄", "name": "빅카메라·요도바시(가전양판점)", "area": "전국 주요 역 인근", "address": "", "lat": 35.675355, "lng": 139.762868, "duty_free": false, "selection": "보통 2층 이상에 주류 코너가 있음 - 가전 포인트 적립/할인에 면세까지 중복 적용되는 경우가 있어 생각보다 경쟁력 있음", "price": "", "tip": "빅카메라 공식 관광객 쿠폰은 면세 10% + 주류 3% 추가할인 구조지만, 위스키 등 일부 주류는 이 3% 할인 대상에서 빠질 수 있다는 안내가 있어(사케는 예외 브랜드 제외하고 3% 확인됨) 위스키도 되는지는 계산대에서 직접 확인 필요 - 안 되더라도 면세 10%는 그대로 적용됨", "source": "https://www.fun-japan.jp/ko/articles/14664", "verified": "2026-09-10"}, {"group": "일본 오사카", "name": "간사이공항 면세점", "area": "오사카", "address": "", "lat": 34.434204, "lng": 135.222523, "duty_free": true, "selection": "야마자키 12년 등 인기 재패니즈 위스키가 시내 매장보다 오히려 구하기 쉬운 편 - 재고는 유동적", "price": "", "tip": "공항 안내소에서 무료로 받을 수 있는 KIX-ITM(간사이 국제 관광객) 카드를 제시하면 면세 가격에서 추가 3% 할인 - 출국 전 시간 여유 있으면 안내소부터 들러서 카드 받는 걸 추천", "source": "https://triple.guide/articles/271eef38-95fd-4d1c-916e-c549a7832643", "verified": "2026-09-10"}, {"group": "일본 도쿄", "name": "나리타·하네다공항 면세점", "area": "도쿄", "address": "", "lat": 35.775871, "lng": 140.39331, "duty_free": true, "selection": "하쿠슈 12년·야마자키 12년 등 취급 - 인기 제품은 품절이 잦아 출국 시간 여유 있게 확인 필요", "price": "", "tip": "나리타공항은 주류·담배 대상 5% 할인쿠폰이 따로 있음(면세 가격에 추가 적용) - 출국장 안내 카운터나 사전 온라인 배포처에서 확인", "source": "https://v.daum.net/v/QTtcrIva8Q", "verified": "2026-09-06"}];</script>
+  <script>
+(function() {
+  var el = document.getElementById("auth-widget");
+  if (!el) return;
+  fetch("https://api.whiskyhot.com/auth/me", { credentials: "include" })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.logged_in) {
+        var label = { kakao: "카카오", google: "구글", naver: "네이버" }[data.provider] || data.provider;
+        el.innerHTML = '<div class="auth-user-badge">' + label + ' 로그인됨 · <button onclick="location.href=\'https://api.whiskyhot.com/auth/logout\'">로그아웃</button></div>';
+      } else {
+        var kakaoIcon = '<svg width="18" height="18" viewBox="0 0 20 20"><path fill="#3C1E1E" d="M10 3C5.58 3 2 5.79 2 9.25c0 2.22 1.48 4.17 3.71 5.29-.16.6-.58 2.15-.66 2.49-.1.42.15.42.32.3.13-.09 2.1-1.43 2.95-2.01.54.08 1.1.12 1.68.12 4.42 0 8-2.79 8-6.25S14.42 3 10 3z"/></svg>';
+        // 로그인 끝나면 지금 보던 페이지로 돌아오게 (auth_api.py safe_next_path가 사이트 내부 경로만 허용)
+        var next = "?next=" + encodeURIComponent(location.pathname + location.search);
+        var googleIcon = '<svg width="18" height="18" viewBox="0 0 18 18">' +
+          '<path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>' +
+          '<path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>' +
+          '<path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/>' +
+          '<path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/>' +
+          '</svg>';
+        el.innerHTML =
+          '<a class="auth-provider-btn kakao" href="https://api.whiskyhot.com/auth/login/kakao' + next + '" title="카카오로 로그인">' + kakaoIcon + '</a>' +
+          '<a class="auth-provider-btn google" href="https://api.whiskyhot.com/auth/login/google' + next + '" title="구글로 로그인">' + googleIcon + '</a>' +
+          '<a class="auth-provider-btn naver" href="https://api.whiskyhot.com/auth/login/naver' + next + '" title="네이버로 로그인">N</a>';
+      }
+    })
+    .catch(function() {});
+})();
+
+(function() {
+  var shops = window.WHISKY_SHOPS || [];
+  var map = L.map("travel-map", { scrollWheelZoom: false });
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19, attribution: "&copy; OpenStreetMap contributors"
+  }).addTo(map);
+  var layer = L.layerGroup().addTo(map);
+  // 지도 상자가 아직 크기 0일 때(숨은 탭·느린 CSS) fitBounds가 세계지도(줌 0)로 굳는 문제 - 크기 다시 재고 다시 맞춘다
+  var lastBounds = null;
+  function refit() { map.invalidateSize(); if (lastBounds) map.fitBounds(lastBounds); }
+  window.addEventListener("load", refit); setTimeout(refit, 600); setTimeout(refit, 2000);
+  document.addEventListener("visibilitychange", function() { if (!document.hidden) refit(); });  // 백그라운드 탭에서 열린 경우
+  var groups = {};
+  shops.forEach(function(s) { (groups[s.group] = groups[s.group] || []).push(s); });
+
+  function dist(a, b) { var dx = a.lat - b.lat, dy = (a.lng - b.lng) * Math.cos(a.lat * Math.PI / 180); return Math.sqrt(dx * dx + dy * dy); }
+  function routeOrder(list) {
+    // 공항·면세점이 있으면 거기서 출발, 나머지는 가까운 곳부터 차례로(단순 최근접) - 동선 초안용
+    var left = list.slice(), out = [];
+    var startIdx = left.findIndex(function(s) { return s.duty_free; });
+    var cur = left.splice(startIdx >= 0 ? startIdx : 0, 1)[0]; out.push(cur);
+    while (left.length) {
+      var bi = 0, bd = Infinity;
+      left.forEach(function(s, i) { var d = dist(cur, s); if (d < bd) { bd = d; bi = i; } });
+      cur = left.splice(bi, 1)[0]; out.push(cur);
+    }
+    return out;
+  }
+  function esc(s) { return String(s || "").replace(/[&<>"]/g, function(c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+  function gmaps(s) { return "https://www.google.com/maps/search/?api=1&query=" + s.lat + "," + s.lng; }
+
+  function show(group) {
+    layer.clearLayers();
+    var list = routeOrder(groups[group] || []);
+    var pts = [];
+    var rows = list.map(function(s, i) {
+      var n = i + 1;
+      var icon = L.divIcon({ className: "map-pin", html: "<span>" + n + "</span>", iconSize: [26, 26], iconAnchor: [13, 13] });
+      L.marker([s.lat, s.lng], { icon: icon }).addTo(layer).bindPopup(
+        "<b>" + n + ". " + esc(s.name) + "</b>" + (s.duty_free ? " <em>면세</em>" : "") + "<br>" + esc(s.selection) +
+        (s.price ? "<br><b>" + esc(s.price) + "</b>" : "") + '<br><a href="' + gmaps(s) + '" target="_blank" rel="noopener">구글지도로 열기</a>');
+      pts.push([s.lat, s.lng]);
+      return '<div class="stop"><div class="stop-no">' + n + '</div><div class="stop-body">' +
+        '<div class="stop-name">' + esc(s.name) + (s.duty_free ? ' <span class="tag">면세</span>' : '') + '</div>' +
+        '<div class="stop-meta">' + esc(s.area) + (s.address ? ' · ' + esc(s.address) : '') + '</div>' +
+        '<p class="stop-items">' + esc(s.selection) + '</p>' +
+        (s.price ? '<p class="stop-price">' + esc(s.price) + '</p>' : '') +
+        (s.tip ? '<p class="stop-tip">' + esc(s.tip) + '</p>' : '') +
+        '<div class="stop-links"><a href="' + gmaps(s) + '" target="_blank" rel="noopener">구글지도</a>' +
+        (s.source ? ' · <a href="' + esc(s.source) + '" target="_blank" rel="noopener">출처</a> · ' + esc(s.verified) + ' 확인' : '') + '</div></div></div>';
+    });
+    document.getElementById("route-list").innerHTML = rows.join("") || '<p class="hot-caption">이 지역은 아직 좌표가 있는 매장이 없어요.</p>';
+    if (pts.length > 1) L.polyline(pts, { color: "#A8651A", weight: 3, opacity: 0.7, dashArray: "6 6" }).addTo(layer);
+    lastBounds = pts.length ? L.latLngBounds(pts).pad(0.25) : null;
+    refit();
+    document.querySelectorAll(".chart-chip").forEach(function(c) { c.classList.toggle("on", c.getAttribute("data-group") === group); });
+    try { localStorage.setItem("travel_map_group", group); } catch (e) {}
+  }
+  document.querySelectorAll(".chart-chip").forEach(function(c) {
+    c.addEventListener("click", function(e) { e.preventDefault(); show(c.getAttribute("data-group")); });
+  });
+  var first = document.querySelector(".chart-chip");
+  var saved = null; try { saved = localStorage.getItem("travel_map_group"); } catch (e) {}
+  if (saved && groups[saved]) show(saved); else if (first) show(first.getAttribute("data-group"));
+})();
+</script>
+  <script>
+(function() {
+  if (document.getElementById("fb-fab")) return;
+  var page = location.pathname || "/";
+  var API = "https://api.whiskyhot.com/api/feedback";
+  var fab = document.createElement("button");
+  fab.id = "fb-fab"; fab.className = "fb-fab"; fab.type = "button"; fab.setAttribute("aria-label", "의견 보내기");
+  fab.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" style="vertical-align:-2px;"><path d="M4 5H20C20.55 5 21 5.45 21 6V15C21 15.55 20.55 16 20 16H9L5 19.5V16H4C3.45 16 3 15.55 3 15V6C3 5.45 3.45 5 4 5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>의견</span>';
+  var panel = document.createElement("div");
+  panel.id = "fb-panel"; panel.className = "fb-panel"; panel.hidden = true;
+  panel.innerHTML =
+    '<div class="fb-head"><strong>이 페이지, 어땠어요?</strong><button type="button" class="fb-close" aria-label="닫기">&times;</button></div>' +
+    '<div class="fb-votes"><button type="button" class="fb-vote" data-v="up">도움됐어요</button><button type="button" class="fb-vote" data-v="down">아쉬워요</button></div>' +
+    '<textarea class="fb-text" maxlength="500" placeholder="어떤 정보가 더 있었으면 좋겠어요? 틀린 가격이나 이름이 있나요? (선택)"></textarea>' +
+    '<input class="fb-contact" maxlength="80" placeholder="답장 받을 연락처 (선택 · 이메일/카톡ID)" />' +
+    '<button type="button" class="cta fb-submit">보내기</button>' +
+    '<p class="fb-done" hidden>고마워요! 하나하나 다 읽고 반영할게요.</p>' +
+    '<p class="fb-err" hidden>지금은 보낼 수 없어요. 잠시 후 다시 시도해주세요.</p>';
+  document.body.appendChild(fab);
+  document.body.appendChild(panel);
+
+  var vote = "";
+  fab.addEventListener("click", function() { panel.hidden = !panel.hidden; });
+  panel.querySelector(".fb-close").addEventListener("click", function() { panel.hidden = true; });
+  Array.prototype.forEach.call(panel.querySelectorAll(".fb-vote"), function(btn) {
+    btn.addEventListener("click", function() {
+      vote = btn.getAttribute("data-v");
+      Array.prototype.forEach.call(panel.querySelectorAll(".fb-vote"), function(b) { b.classList.toggle("selected", b === btn); });
+    });
+  });
+  panel.querySelector(".fb-submit").addEventListener("click", function() {
+    var message = panel.querySelector(".fb-text").value.trim();
+    var contact = panel.querySelector(".fb-contact").value.trim();
+    var err = panel.querySelector(".fb-err");
+    err.hidden = true;
+    if (!vote && !message) { err.textContent = "도움됐어요/아쉬워요 중 하나를 고르거나 의견을 적어주세요."; err.hidden = false; return; }
+    fetch(API, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ page: page, vote: vote, message: message, contact: contact })
+    }).then(function(r) {
+      if (!r.ok) throw new Error("bad status");
+      panel.querySelector(".fb-done").hidden = false;
+      panel.querySelector(".fb-submit").disabled = true;
+      setTimeout(function() { panel.hidden = true; }, 1800);
+    }).catch(function() {
+      err.textContent = "지금은 보낼 수 없어요. 잠시 후 다시 시도해주세요."; err.hidden = false;
+    });
+  });
+})();
+</script>
+</body>
+</html>
